@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "284026983381",
+    "project_id": "aplikasi-umkm-data-hybrid",
+    "storage_bucket": "aplikasi-umkm-data-hybrid.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:284026983381:android:044ddcbb6081fe7036a35c",
+        "android_client_info": {
+          "package_name": "com.example.aplikasi_kasir_umkm_data_hybrid"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCUIcGv-BeYHHP7XJ5ooFLOKP3Mt6l2Kfg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

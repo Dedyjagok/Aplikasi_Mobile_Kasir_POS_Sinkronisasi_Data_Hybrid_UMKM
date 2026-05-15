@@ -98,7 +98,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 12),
             _field(
-              id: 'settings_store_name',
               label: 'Nama Toko / Warung *',
               ctrl: _storeNameCtrl,
               hint: 'Contoh: Warung 3D Water RO',
@@ -107,7 +106,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 12),
             _field(
-              id: 'settings_store_address',
               label: 'Alamat Lengkap',
               ctrl: _addressCtrl,
               hint: 'Contoh: Jl. Merdeka No. 123, Kota',
@@ -115,7 +113,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 12),
             _field(
-              id: 'settings_store_phone',
               label: 'Nomor Telepon / WhatsApp',
               ctrl: _phoneCtrl,
               hint: 'Contoh: 0812-3456-7890',
@@ -123,7 +120,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 12),
             _field(
-              id: 'settings_receipt_footer',
               label: 'Pesan Footer Struk',
               ctrl: _footerCtrl,
               hint: 'Contoh: Terima Kasih! Silakan Datang Kembali.',
@@ -144,7 +140,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: [
                 Expanded(
                   child: _field(
-                    id: 'settings_refill_antar',
                     label: '🛵 Harga Antar',
                     ctrl: _refillAntarCtrl,
                     isNum: true,
@@ -154,7 +149,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: _field(
-                    id: 'settings_refill_ambil',
                     label: '🚶 Harga Ambil Sendiri',
                     ctrl: _refillAmbilCtrl,
                     isNum: true,
@@ -178,7 +172,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: [
                 Expanded(
                   child: _field(
-                    id: 'settings_low_stock',
                     label: 'Batas Stok Rendah (default)',
                     ctrl: _thresholdCtrl,
                     isNum: true,
@@ -188,7 +181,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: _field(
-                    id: 'settings_currency',
                     label: 'Simbol Mata Uang',
                     ctrl: _currencyCtrl,
                     hint: 'Rp',
@@ -200,7 +192,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
             // ── Tombol Simpan ─────────────────────────────
             ElevatedButton.icon(
-              id: 'settings_save_button',
               onPressed: _isSaving ? null : _save,
               icon: _isSaving
                   ? const SizedBox(
@@ -222,7 +213,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _field({
-    required String id,
     required String label,
     required TextEditingController ctrl,
     String? hint,

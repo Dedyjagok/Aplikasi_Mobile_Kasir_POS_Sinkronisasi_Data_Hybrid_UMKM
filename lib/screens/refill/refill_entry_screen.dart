@@ -38,14 +38,12 @@ class _RefillEntryScreenState extends State<RefillEntryScreen> {
         title: const Text('Refill Air RO'),
         actions: [
           IconButton(
-            id: 'refill_history_button',
             icon: const Icon(Icons.history),
             onPressed: () => Navigator.push(context,
                 MaterialPageRoute(
                     builder: (_) => const RefillHistoryScreen())),
           ),
           IconButton(
-            id: 'refill_monthly_button',
             icon: const Icon(Icons.bar_chart),
             onPressed: () => Navigator.push(context,
                 MaterialPageRoute(
@@ -179,7 +177,6 @@ class _RefillEntryScreenState extends State<RefillEntryScreen> {
 
             // ── Tombol Simpan ────────────────────────────
             ElevatedButton.icon(
-              id: 'refill_save_button',
               onPressed: _isSaving
                   ? null
                   : () async {

@@ -37,7 +37,6 @@ class _ProductListScreenState extends State<ProductListScreen> {
         title: const Text('Katalog Produk'),
         actions: [
           IconButton(
-            id: 'product_add_button',
             icon: const Icon(Icons.add),
             onPressed: () => Navigator.push(
               context,

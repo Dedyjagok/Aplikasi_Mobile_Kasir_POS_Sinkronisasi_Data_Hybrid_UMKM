@@ -27,7 +27,7 @@ dependencies:
   connectivity_plus: ^6.0.5
 
   # ── Cetak Struk Bluetooth ────────────────────────────────
-  blue_thermal_printer: ^1.1.2
+  blue_thermal_printer: ^1.2.3
 
   # ── Format & Utilitas ────────────────────────────────────
   intl: ^0.19.0

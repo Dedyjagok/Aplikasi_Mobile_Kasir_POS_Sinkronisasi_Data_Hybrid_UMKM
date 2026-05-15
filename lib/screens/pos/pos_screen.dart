@@ -39,7 +39,6 @@ class _PosScreenState extends State<PosScreen> {
             alignment: Alignment.topRight,
             children: [
               IconButton(
-                id: 'pos_cart_button',
                 icon: const Icon(Icons.shopping_cart_outlined),
                 onPressed: cart.isEmpty
                     ? null
@@ -147,7 +146,6 @@ class _PosScreenState extends State<PosScreen> {
       floatingActionButton: cart.isEmpty
           ? null
           : FloatingActionButton.extended(
-              id: 'pos_open_cart_fab',
               onPressed: () => Navigator.push(
                   context,
                   MaterialPageRoute(

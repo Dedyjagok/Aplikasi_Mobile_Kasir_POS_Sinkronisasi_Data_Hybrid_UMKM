@@ -131,7 +131,6 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
             ),
             const SizedBox(height: 32),
             ElevatedButton.icon(
-              id: 'product_save_button',
               onPressed: _isLoading ? null : _save,
               icon: _isLoading
                   ? const SizedBox(

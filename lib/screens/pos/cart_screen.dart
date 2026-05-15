@@ -177,7 +177,6 @@ class _CartScreenState extends State<CartScreen> {
 
                 // Input uang diterima
                 TextField(
-                  id: 'cart_cash_input',
                   controller: _cashCtrl,
                   keyboardType: TextInputType.number,
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
@@ -227,7 +226,6 @@ class _CartScreenState extends State<CartScreen> {
 
                 // Tombol Bayar
                 ElevatedButton.icon(
-                  id: 'cart_pay_button',
                   onPressed: _canPay ? _processPayment : null,
                   icon: const Icon(Icons.check_circle_outline),
                   label: const Text('Proses Pembayaran'),

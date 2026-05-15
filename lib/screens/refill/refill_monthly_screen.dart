@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../../models/refill_record_model.dart';
 import '../../providers/refill_provider.dart';
 import '../../providers/settings_provider.dart';
 
@@ -77,7 +78,6 @@ class _RefillMonthlyScreenState extends State<RefillMonthlyScreen> {
                     child: Row(
                       children: [
                         IconButton(
-                          id: 'monthly_prev_month',
                           onPressed: _prevMonth,
                           icon: const Icon(Icons.chevron_left),
                         ),
@@ -91,7 +91,6 @@ class _RefillMonthlyScreenState extends State<RefillMonthlyScreen> {
                           ),
                         ),
                         IconButton(
-                          id: 'monthly_next_month',
                           onPressed: isCurrentMonth ? null : _nextMonth,
                           icon: Icon(Icons.chevron_right,
                               color: isCurrentMonth

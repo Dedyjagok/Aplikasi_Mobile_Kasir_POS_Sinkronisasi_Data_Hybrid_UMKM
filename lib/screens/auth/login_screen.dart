@@ -104,7 +104,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
                       // Email
                       TextFormField(
-                        id: 'login_email_field',
                         controller: _emailCtrl,
                         keyboardType: TextInputType.emailAddress,
                         decoration: const InputDecoration(
@@ -119,7 +118,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
                       // Password
                       TextFormField(
-                        id: 'login_password_field',
                         controller: _passCtrl,
                         obscureText: _obscure,
                         decoration: InputDecoration(

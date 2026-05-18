@@ -3,7 +3,6 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-
 import 'providers/auth_provider.dart';
 import 'providers/cart_provider.dart';
 import 'providers/connectivity_provider.dart';
@@ -15,6 +14,7 @@ import 'screens/home/home_screen.dart';
 import 'services/database_service.dart';
 import 'services/firestore_service.dart';
 import 'services/notification_service.dart';
+import 'services/revenuecat_service.dart';
 import 'services/sync_service.dart';
 
 /// Handler pesan FCM di background (wajib top-level)
@@ -36,6 +36,9 @@ void main() async {
 
   // Inisialisasi notifikasi
   await NotificationService().init();
+
+  // Inisialisasi langganan (RevenueCat)
+  await RevenueCatService().initialize();
 
   runApp(
     MultiProvider(

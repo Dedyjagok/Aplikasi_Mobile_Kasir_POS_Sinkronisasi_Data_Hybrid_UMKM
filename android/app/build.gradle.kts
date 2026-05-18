@@ -6,6 +6,25 @@ plugins {
     id("com.google.gms.google-services")
 }
 
+subprojects {
+    afterEvaluate {
+        val android = extensions.findByName("android") as? com.android.build.gradle.BaseExtension
+        if (android != null) {
+            // Jika library tidak memiliki namespace, kita ambil dari package name di Manifest-nya
+            if (android.namespace == null) {
+                val manifestFile = file("src/main/AndroidManifest.xml")
+                if (manifestFile.exists()) {
+                    val packageLine = manifestFile.readLines().find { it.contains("package=") }
+                    val packageName = packageLine?.substringAfter("package=\"")?.substringBefore("\"")
+                    if (packageName != null) {
+                        android.namespace = packageName
+                    }
+                }
+            }
+        }
+    }
+}
+
 dependencies {
   // Import the Firebase BoM
   implementation(platform("com.google.firebase:firebase-bom:34.13.0"))

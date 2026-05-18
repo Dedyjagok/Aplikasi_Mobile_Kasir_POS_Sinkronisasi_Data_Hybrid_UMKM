@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'database_service.dart';
 import 'firestore_service.dart';
+import 'revenuecat_service.dart';
 
 /// Service sinkronisasi data hybrid (SQLite ↔ Firestore).
 /// Dipanggil otomatis saat koneksi internet pulih.
@@ -27,6 +28,11 @@ class SyncService {
 
   /// Sinkronisasi semua data yang belum ter-upload ke cloud.
   Future<void> syncAll() async {
+    // [PREMIUM FEATURE] Hanya sinkronisasi jika pengguna berlangganan
+    if (!RevenueCatService().isPremium) {
+      return; 
+    }
+
     await Future.wait([
       _syncPosTransactions(),
       _syncRefillRecords(),

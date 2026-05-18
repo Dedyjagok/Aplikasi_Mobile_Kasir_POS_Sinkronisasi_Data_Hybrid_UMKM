@@ -16,6 +16,8 @@ import '../refill/refill_entry_screen.dart';
 import '../refill/refill_history_screen.dart';
 import '../refill/refill_monthly_screen.dart';
 import '../settings/settings_screen.dart';
+import 'package:purchases_ui_flutter/purchases_ui_flutter.dart';
+import '../../services/revenuecat_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -53,6 +55,25 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: Text(settings.storeName),
         actions: [
+          IconButton(
+            icon: Icon(
+              RevenueCatService().isPremium ? Icons.cloud_done : Icons.cloud_upload,
+              color: RevenueCatService().isPremium ? Colors.green : Colors.orange,
+            ),
+            tooltip: RevenueCatService().isPremium ? 'Cloud Backup Aktif' : 'Upgrade ke Premium',
+            onPressed: () async {
+              if (RevenueCatService().isPremium) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Akun Anda sudah Premium. Auto-Sync aktif!'))
+                );
+              } else {
+                // Tampilkan UI Paywall dari RevenueCat
+                await RevenueCatUI.presentPaywallIfNeeded("premium");
+                // Refresh UI setelah paywall ditutup (untuk melihat perubahan icon)
+                setState(() {});
+              }
+            },
+          ),
           Padding(
             padding: const EdgeInsets.only(right: 8),
             child: ConnectivityBadge(isOnline: isOnline),

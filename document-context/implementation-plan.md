@@ -53,6 +53,7 @@
     | **Cetak Struk** | `blue_thermal_printer` | `^1.x` | Printer thermal Bluetooth 58mm (ESC/POS) |
     | **Format Data** | `intl` | `^0.19.x` | Format mata uang IDR, tanggal, bulan |
     | **State Management** | `provider` | `^6.x` | Aliran data antara database dan UI |
+    | **Langganan (IAP)** | `purchases_flutter` | `^6.x` | Integrasi In-App Purchases via RevenueCat |
 
     ### Konfigurasi `pubspec.yaml`
 
@@ -71,16 +72,20 @@
     intl: ^0.19.0
     provider: ^6.1.2
     cupertino_icons: ^1.0.8
+    purchases_flutter: ^6.6.0
     ```
 
     ---
 
-    ## 2. Autentikasi (Firebase Auth)
+    ## 2. Autentikasi & Role-Based Access (Firebase Auth)
 
-    Sama untuk kedua modul — satu akun pemilik mengakses seluruh aplikasi.
+    Sistem ini membedakan peran (Role) antara dua tipe pengguna untuk menjaga keamanan dan kerapian data:
 
-    - **Metode:** Email & Password
-    - **Alur:** Input kredensial → Firebase Auth → Jika berhasil → Masuk ke halaman utama (Home) yang menampilkan dua pilihan modul: **POS Produk** dan **Refill Air RO**
+    - **Owner (Pemilik)**: Memiliki akses penuh ke sistem. Berwenang melihat semua riwayat/rekap transaksi, mengatur CMS barang baru, mengatur CMS harga refill, serta CMS detail struk.
+    - **Kasir (Staf)**: Memiliki akses terbatas yang berfokus pada operasional. Hanya dapat mengakses Modul POS (transaksi penjualan & cetak struk) dan Modul Refill (input catatan isi ulang air).
+
+    - **Metode:** Email & Password (Firebase Auth)
+    - **Alur:** Input kredensial → Cek Autentikasi & Cek Role (via Firestore `users` collection) → Jika berhasil → Masuk ke halaman utama (Home) dengan daftar menu dan fitur yang disesuaikan berdasarkan Role.
 
     ### File Terkait
     #### [NEW] `lib/screens/auth/login_screen.dart`
@@ -320,34 +325,49 @@
 
     ---
 
-    ## 5. Mekanisme Sinkronisasi Data Hybrid (Berlaku Kedua Modul)
+    ## 5. Mekanisme Sinkronisasi Cloud (Fitur Premium via RevenueCat)
+
+    Aplikasi ini menggunakan model bisnis **Freemium**. Fungsi kasir dan pencatatan sepenuhnya gratis menggunakan database lokal (SQLite). Fitur sinkronisasi ke Firebase (Cloud Backup) dan Pantau Jarak Jauh dikunci sebagai fitur berbayar (Langganan Bulanan/Tahunan) yang ditangani oleh **RevenueCat**.
 
     ```mermaid
     flowchart TD
         subgraph "📱 Perangkat (Offline-First)"
             A["Simpan Transaksi"] --> B["SQLite Lokal\nis_synced = false"]
             B --> C{"Internet\nAktif?"}
+            C -- "Online ✅" --> CheckPremium{"Apakah Akun\nPremium?"}
+            C -- "Offline ❌" --> F["Data Aman di Lokal\nTunggu Koneksi"]
         end
 
         subgraph "☁️ Cloud Firestore"
             D["pos_transactions/\nrefill_records/"]
         end
+        
+        subgraph "💰 Monetisasi (RevenueCat)"
+            Paywall["Tampilkan Paywall\nLangganan Pro"]
+        end
 
-        C -- "Online ✅" --> E["Kirim Batch ke Firestore"]
-        C -- "Offline ❌" --> F["Data Aman di Lokal\nTunggu Koneksi"]
+        CheckPremium -- "Belum Premium" --> Paywall
+        CheckPremium -- "Premium ✅" --> E["Kirim Batch ke Firestore"]
+        
         E -- "Sukses" --> G["Update is_synced = true\ndi SQLite"]
         F -.->|"Koneksi Pulih"| C
 
         style B fill:#2e7d32,color:#fff
         style D fill:#ff6d00,color:#fff
         style G fill:#1a73e8,color:#fff
+        style Paywall fill:#fbc02d,color:#000
     ```
 
     ### File Terkait
-    #### [NEW] `lib/services/sync_service.dart`
-    - Listener `connectivity_plus` untuk deteksi perubahan jaringan
-    - `syncPosPendingTransactions()` — upload transaksi POS yang belum sinkron
-    - `syncRefillPendingRecords()` — upload record refill yang belum sinkron
+    #### [NEW] `lib/services/revenuecat_service.dart`
+    - Inisialisasi API Key RevenueCat (Play Store/App Store).
+    - Cek status langganan (`CustomerInfo`).
+    - Fetch *Offerings* (Paket Langganan).
+    #### [NEW] `lib/screens/premium/paywall_screen.dart`
+    - Layar promosi fitur Cloud Backup & Multi-Device.
+    - Tombol Beli Langganan (Bulanan/Tahunan).
+    #### [MODIFY] `lib/services/sync_service.dart`
+    - Cek status `revenuecat_service` terlebih dahulu. Jika belum premium, hentikan fungsi *upload* Firestore dan biarkan data berstatus `is_synced = false` di SQLite lokal.
 
     ---
 

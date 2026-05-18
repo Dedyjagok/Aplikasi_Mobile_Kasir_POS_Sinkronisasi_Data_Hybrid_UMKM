@@ -126,6 +126,7 @@
     -- Katalog Produk
     CREATE TABLE products (
     id            TEXT PRIMARY KEY,
+    user_id       TEXT NOT NULL,
     name          TEXT NOT NULL,
     category      TEXT,
     cost_price    INTEGER NOT NULL,
@@ -138,6 +139,7 @@
     -- Header Transaksi Produk
     CREATE TABLE pos_transactions (
     id              TEXT PRIMARY KEY,
+    user_id         TEXT NOT NULL,
     timestamp       TEXT NOT NULL,
     total_amount    INTEGER NOT NULL,
     cash_received   INTEGER NOT NULL,
@@ -159,22 +161,20 @@
     );
     ```
 
-    ### Struktur Collection Firestore — Modul POS
+    ### Struktur Collection Firestore — Multi-Tenancy
 
-    ```
+    ```text
     Firestore/
-    ├── products/
-    │   └── {product_id}
-    │       ├── name, category, cost_price, sell_price
-    │       ├── stock, low_stock_threshold
-    │       └── updated_at
-    │
-    └── pos_transactions/
-        └── {transaction_id}
-            ├── timestamp, total_amount
-            ├── cash_received, change_amount
-            ├── payment_method, is_synced: true
-            └── items: [ { product_id, name, qty, price, subtotal } ]
+    └── users/
+        └── {uid} / (ID Pemilik Toko)
+            ├── profile: { name, isPremium }
+            ├── products/
+            │   └── {product_id}
+            │       ├── name, category, cost_price, sell_price, stock, dll
+            └── pos_transactions/
+                └── {transaction_id}
+                    ├── timestamp, total_amount, cash_received, dll
+                    └── items: [ { product_id, name, qty, price, subtotal } ]
     ```
 
     ### Format Struk Thermal 58mm
@@ -258,6 +258,7 @@
     -- Riwayat Pencatatan Refill
     CREATE TABLE refill_records (
     id          TEXT PRIMARY KEY,
+    user_id     TEXT NOT NULL,
     timestamp   TEXT NOT NULL,       -- Tanggal & waktu isi ulang
     volume_liter INTEGER NOT NULL,   -- Volume dalam liter (5, 10, 15, 19)
     price       INTEGER NOT NULL,    -- Harga saat transaksi

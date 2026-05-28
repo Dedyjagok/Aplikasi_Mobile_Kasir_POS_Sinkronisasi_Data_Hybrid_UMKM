@@ -87,20 +87,22 @@ class _LoginScreenState extends State<LoginScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Text(
-                        'Selamat Datang',
-                        style: GoogleFonts.poppins(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w700,
-                          color: const Color(0xFF00695C),
-                        ),
+                      'Aktivasi Perangkat POS',
+                      style: GoogleFonts.poppins(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF00695C),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Masukkan email dan password Anda',
-                        style: GoogleFonts.poppins(
-                            color: Colors.grey.shade600, fontSize: 13),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Silakan login sebagai Owner untuk mengaktifkan perangkat ini dan menghubungkannya ke sistem Cloud.',
+                      textAlign: TextAlign.start,
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                        color: Colors.grey.shade600,
                       ),
-                      const SizedBox(height: 24),
+                    ),  const SizedBox(height: 24),
 
                       // Email
                       TextFormField(

@@ -84,13 +84,17 @@
     - **Owner (Pemilik)**: Memiliki akses penuh ke sistem. Berwenang melihat semua riwayat/rekap transaksi, mengatur CMS barang baru, mengatur CMS harga refill, serta CMS detail struk.
     - **Kasir (Staf)**: Memiliki akses terbatas yang berfokus pada operasional. Hanya dapat mengakses Modul POS (transaksi penjualan & cetak struk) dan Modul Refill (input catatan isi ulang air).
 
-    - **Metode:** Email & Password (Firebase Auth)
-    - **Alur:** Input kredensial → Cek Autentikasi & Cek Role (via Firestore `users` collection) → Jika berhasil → Masuk ke halaman utama (Home) dengan daftar menu dan fitur yang disesuaikan berdasarkan Role.
+    - **Metode:** Hybrid (Firebase Auth untuk Aktivasi Perangkat, Sistem Profil PIN untuk operasional harian)
+    - **Alur:**
+      1. **Aktivasi Perangkat:** Owner melakukan *login* 1x menggunakan Email & Password Firebase (melalui `LoginScreen`). Setelah itu sesi tersimpan permanen.
+      2. **Operasional Harian:** Setiap aplikasi dibuka, akan muncul `LockScreen` (Layar Pilih Profil). Kasir memilih namanya dan memasukkan **PIN 4 Digit** yang telah diatur oleh Owner di menu Pengaturan. Owner juga bisa login dari Lock Screen menggunakan *password* Firebase.
+      3. **Masuk Aplikasi:** Berdasarkan PIN/Profil yang dipilih, aplikasi menyesuaikan fitur yang bisa diakses (Home).
 
     ### File Terkait
-    #### [NEW] `lib/screens/auth/login_screen.dart`
+    #### [NEW] `lib/screens/auth/login_screen.dart` (Khusus aktivasi owner)
+    #### [NEW] `lib/screens/auth/lock_screen.dart` (Gerbang harian kasir/owner)
     #### [NEW] `lib/services/auth_service.dart`
-    #### [MODIFY] `lib/main.dart` — Inisialisasi Firebase, routing berdasarkan auth state
+    #### [MODIFY] `lib/main.dart` — Routing berlapis (auth.isLoggedIn -> session.isActive -> Home)
 
     ---
 

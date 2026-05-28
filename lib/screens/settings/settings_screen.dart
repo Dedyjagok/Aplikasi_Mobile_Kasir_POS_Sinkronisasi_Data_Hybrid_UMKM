@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/settings_provider.dart';
+import 'cashier_management_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -186,7 +187,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     hint: 'Rp',
                   ),
                 ),
+                ),
               ],
+            ),
+            const SizedBox(height: 32),
+
+            // ══════════════════════════════════════════════
+            //  MANAJEMEN KASIR
+            // ══════════════════════════════════════════════
+            _SectionHeader(
+              icon: Icons.people_outline,
+              title: 'Akun Staf Kasir',
+              subtitle: 'Buat PIN khusus untuk karyawan',
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const CashierManagementScreen(),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.manage_accounts, color: Color(0xFF00695C)),
+                label: const Text(
+                  'Kelola Kasir',
+                  style: TextStyle(color: Color(0xFF00695C)),
+                ),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  side: const BorderSide(color: Color(0xFF00695C)),
+                ),
+              ),
             ),
             const SizedBox(height: 32),
 

@@ -5,10 +5,13 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/cart_provider.dart';
+import 'providers/cashier_provider.dart';
 import 'providers/connectivity_provider.dart';
 import 'providers/product_provider.dart';
 import 'providers/refill_provider.dart';
+import 'providers/session_provider.dart';
 import 'providers/settings_provider.dart';
+import 'screens/auth/lock_screen.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/home/home_screen.dart';
 import 'services/database_service.dart';
@@ -50,6 +53,8 @@ void main() async {
         ChangeNotifierProvider(
             create: (_) => ProductProvider(localDb, cloudDb)),
         ChangeNotifierProvider(create: (_) => CartProvider()),
+        ChangeNotifierProvider(create: (_) => CashierProvider(localDb)),
+        ChangeNotifierProvider(create: (_) => SessionProvider()),
         ChangeNotifierProvider(
             create: (_) => RefillProvider(localDb, cloudDb)),
       ],
@@ -112,12 +117,18 @@ class KasirApp extends StatelessWidget {
           margin: EdgeInsets.zero,
         ),
       ),
-      home: Consumer<AuthProvider>(
-        builder: (context, auth, _) {
-          // Routing: jika sudah login → Home, jika tidak → Login
+      home: Consumer2<AuthProvider, SessionProvider>(
+        builder: (context, auth, session, _) {
+          // Routing: jika sudah login via Firebase
           if (auth.isLoggedIn) {
-            return const HomeScreen();
+            // Jika ada sesi aktif (PIN valid), masuk Home
+            if (session.isActive) {
+              return const HomeScreen();
+            }
+            // Jika tidak ada sesi aktif, tampilkan Layar Kunci (Pilih Profil)
+            return const LockScreen();
           }
+          // Jika belum login via Firebase (baru install), tampilkan form Aktivasi
           return const LoginScreen();
         },
       ),

@@ -24,9 +24,21 @@ class DatabaseService {
     final path = join(dbPath, 'kasir_umkm.db');
     return await openDatabase(
       path,
-      version: 1,
+      version: 2, // Naik versi untuk memicu onUpgrade
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
     );
+  }
+
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    // Pada masa development, drop semua tabel dan buat ulang
+    await db.execute('DROP TABLE IF EXISTS pos_transaction_items');
+    await db.execute('DROP TABLE IF EXISTS pos_transactions');
+    await db.execute('DROP TABLE IF EXISTS products');
+    await db.execute('DROP TABLE IF EXISTS refill_records');
+    await db.execute('DROP TABLE IF EXISTS app_settings');
+    await db.execute('DROP TABLE IF EXISTS cashiers');
+    await _onCreate(db, newVersion);
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -34,6 +46,7 @@ class DatabaseService {
     await db.execute('''
       CREATE TABLE products (
         id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
         name TEXT NOT NULL,
         category TEXT,
         cost_price INTEGER NOT NULL,
@@ -48,6 +61,7 @@ class DatabaseService {
     await db.execute('''
       CREATE TABLE pos_transactions (
         id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
         timestamp TEXT NOT NULL,
         total_amount INTEGER NOT NULL,
         cash_received INTEGER NOT NULL,
@@ -75,6 +89,7 @@ class DatabaseService {
     await db.execute('''
       CREATE TABLE refill_records (
         id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
         timestamp TEXT NOT NULL,
         type TEXT NOT NULL,
         price INTEGER NOT NULL,
@@ -87,6 +102,17 @@ class DatabaseService {
       CREATE TABLE app_settings (
         key TEXT PRIMARY KEY,
         value TEXT NOT NULL
+      )
+    ''');
+
+    // Tabel Akun Kasir (Sistem PIN)
+    await db.execute('''
+      CREATE TABLE cashiers (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        pin TEXT NOT NULL,
+        is_active INTEGER DEFAULT 1
       )
     ''');
   }
@@ -254,5 +280,47 @@ class DatabaseService {
       );
     });
     await batch.commit(noResult: true);
+  }
+
+  // ═══════════════════════════════════════════════════════
+  //  CASHIERS (MANAJEMEN KASIR)
+  // ═══════════════════════════════════════════════════════
+
+  Future<void> insertCashier(Map<String, dynamic> cashier) async {
+    final db = await database;
+    await db.insert(
+      'cashiers',
+      cashier,
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<void> updateCashier(Map<String, dynamic> cashier) async {
+    final db = await database;
+    await db.update(
+      'cashiers',
+      cashier,
+      where: 'id = ?',
+      whereArgs: [cashier['id']],
+    );
+  }
+
+  Future<void> deleteCashier(String id) async {
+    final db = await database;
+    await db.delete(
+      'cashiers',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> getCashiers(String userId) async {
+    final db = await database;
+    return await db.query(
+      'cashiers',
+      where: 'user_id = ?',
+      whereArgs: [userId],
+      orderBy: 'name ASC',
+    );
   }
 }

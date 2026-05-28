@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../providers/auth_provider.dart';
 import '../../providers/connectivity_provider.dart';
+import '../../providers/session_provider.dart';
 import '../../providers/product_provider.dart';
 import '../../providers/refill_provider.dart';
 import '../../providers/settings_provider.dart';
@@ -88,8 +89,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         builder: (_) => const SettingsScreen())),
               ),
               PopupMenuItem(
-                child: const Text('Keluar'),
-                onTap: () => context.read<AuthProvider>().signOut(),
+                child: const Text('Kunci Layar'),
+                onTap: () => context.read<SessionProvider>().lockScreen(),
               ),
             ],
           ),

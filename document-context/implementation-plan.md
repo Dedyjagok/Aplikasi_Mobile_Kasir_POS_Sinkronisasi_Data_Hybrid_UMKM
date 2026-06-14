@@ -54,6 +54,7 @@
     | **Format Data** | `intl` | `^0.19.x` | Format mata uang IDR, tanggal, bulan |
     | **State Management** | `provider` | `^6.x` | Aliran data antara database dan UI |
     | **Langganan (IAP)** | `purchases_flutter` | `^6.x` | Integrasi In-App Purchases via RevenueCat |
+    | **Grafik / Chart** | `fl_chart` | `^0.6x.x` | Membuat grafik visual (Bar Chart) statistik produk |
 
     ### Konfigurasi `pubspec.yaml`
 

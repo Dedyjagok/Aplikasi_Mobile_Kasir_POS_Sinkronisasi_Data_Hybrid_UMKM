@@ -70,4 +70,22 @@ class PosHistoryProvider extends ChangeNotifier {
       totalItemsSold: itemsSold,
     );
   }
+
+  /// Mendapatkan daftar produk terlaris berdasarkan Kuantitas
+  List<MapEntry<String, int>> get topSellingProducts {
+    final Map<String, int> productSales = {};
+
+    for (final trx in _monthTransactions) {
+      for (final item in trx.items) {
+        final currentQty = productSales[item.productName] ?? 0;
+        productSales[item.productName] = currentQty + item.qty;
+      }
+    }
+
+    final sortedEntries = productSales.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    // Ambil top 5 terlaris
+    return sortedEntries.take(5).toList();
+  }
 }

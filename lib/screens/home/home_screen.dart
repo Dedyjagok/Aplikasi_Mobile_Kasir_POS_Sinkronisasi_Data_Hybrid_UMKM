@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-
 import '../../providers/auth_provider.dart';
 import '../../providers/connectivity_provider.dart';
 import '../../providers/session_provider.dart';
@@ -18,6 +17,7 @@ import '../products/product_monthly_screen.dart';
 import '../refill/refill_entry_screen.dart';
 import '../refill/refill_monthly_screen.dart';
 import '../settings/settings_screen.dart';
+import '../statistic_pos/statistic_screen.dart';
 import 'package:purchases_ui_flutter/purchases_ui_flutter.dart';
 import '../../services/revenuecat_service.dart';
 
@@ -245,17 +245,28 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                     ),
+                    const SizedBox(width: 12),
+                    _QuickMenu(
+                      icon: Icons.pie_chart,
+                      label: 'Statistik\nPOS',
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const StatisticScreen(),
+                        ),
+                      ),
+                    ),
                     if (session.isOwner) ...[
                       const SizedBox(width: 12),
                       _QuickMenu(
                         icon: Icons.settings_outlined,
-                      label: 'Peng-\naturan',
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const SettingsScreen(),
+                        label: 'Peng-\naturan',
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const SettingsScreen(),
+                          ),
                         ),
-                      ),
                       ),
                     ],
                   ],
@@ -343,29 +354,29 @@ class _QuickMenu extends StatelessWidget {
       child: Container(
         width: 85,
         padding: const EdgeInsets.symmetric(vertical: 14),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black12,
-                blurRadius: 6,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Column(
-            children: [
-              Icon(icon, color: const Color(0xFF00695C), size: 26),
-              const SizedBox(height: 6),
-              Text(
-                label,
-                style: GoogleFonts.poppins(fontSize: 11),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
-      );
+        child: Column(
+          children: [
+            Icon(icon, color: const Color(0xFF00695C), size: 26),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              style: GoogleFonts.poppins(fontSize: 11),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

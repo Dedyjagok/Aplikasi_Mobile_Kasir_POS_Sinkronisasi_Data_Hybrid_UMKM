@@ -16,6 +16,9 @@ class ProductListScreen extends StatefulWidget {
 }
 
 class _ProductListScreenState extends State<ProductListScreen> {
+  String? _selectedCategory;
+  String _stockSort = 'Semua';
+
   @override
   void initState() {
     super.initState();
@@ -34,6 +37,22 @@ class _ProductListScreenState extends State<ProductListScreen> {
         symbol: '${settings.currencySymbol} ',
         decimalDigits: 0);
 
+    // Memproses Filter Lokal & Sorting
+    var displayList = products.products.toList();
+
+    if (_selectedCategory != null) {
+      displayList.retainWhere((p) {
+        final catName = categories.where((c) => c.id == p.categoryId).firstOrNull?.name ?? 'Tanpa Kategori';
+        return catName == _selectedCategory;
+      });
+    }
+
+    if (_stockSort == 'Terbanyak') {
+      displayList.sort((a, b) => b.stock.compareTo(a.stock));
+    } else if (_stockSort == 'Terdikit') {
+      displayList.sort((a, b) => a.stock.compareTo(b.stock));
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Katalog Produk'),
@@ -50,21 +69,98 @@ class _ProductListScreenState extends State<ProductListScreen> {
       ),
       body: Column(
         children: [
-          // Search
+          // Search & Filter
           Padding(
             padding: const EdgeInsets.all(16),
-            child: TextField(
-              decoration: const InputDecoration(
-                hintText: 'Cari produk...',
-                prefixIcon: Icon(Icons.search),
-              ),
-              onChanged: products.setSearchQuery,
+            child: Column(
+              children: [
+                TextField(
+                  decoration: const InputDecoration(
+                    hintText: 'Cari produk...',
+                    prefixIcon: Icon(Icons.search),
+                  ),
+                  onChanged: products.setSearchQuery,
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            isExpanded: true,
+                            value: _selectedCategory,
+                            hint: Text('Kategori', style: GoogleFonts.poppins(fontSize: 13)),
+                            items: [
+                              DropdownMenuItem(
+                                value: null,
+                                child: Text('Semua Kategori', style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600)),
+                              ),
+                              ...categories.map((c) => DropdownMenuItem(
+                                value: c.name,
+                                child: Text(c.name, style: GoogleFonts.poppins(fontSize: 13)),
+                              )),
+                              DropdownMenuItem(
+                                value: 'Tanpa Kategori',
+                                child: Text('Tanpa Kategori', style: GoogleFonts.poppins(fontSize: 13)),
+                              ),
+                            ],
+                            onChanged: (val) {
+                              setState(() => _selectedCategory = val);
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            isExpanded: true,
+                            value: _stockSort,
+                            items: [
+                              DropdownMenuItem(
+                                value: 'Semua',
+                                child: Text('Urut Stok', style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600)),
+                              ),
+                              DropdownMenuItem(
+                                value: 'Terbanyak',
+                                child: Text('Stok Terbanyak', style: GoogleFonts.poppins(fontSize: 13)),
+                              ),
+                              DropdownMenuItem(
+                                value: 'Terdikit',
+                                child: Text('Stok Terdikit', style: GoogleFonts.poppins(fontSize: 13)),
+                              ),
+                            ],
+                            onChanged: (val) {
+                              if (val != null) {
+                                setState(() => _stockSort = val);
+                              }
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
           Expanded(
             child: products.isLoading
                 ? const Center(child: CircularProgressIndicator())
-                : products.products.isEmpty
+                : displayList.isEmpty
                     ? Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -90,9 +186,9 @@ class _ProductListScreenState extends State<ProductListScreen> {
                       )
                     : ListView.builder(
                         padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                        itemCount: products.products.length,
+                        itemCount: displayList.length,
                         itemBuilder: (_, i) {
-                          final p = products.products[i];
+                          final p = displayList[i];
                           final catName = categories.where((c) => c.id == p.categoryId).firstOrNull?.name ?? 'Tanpa Kategori';
                           return Card(
                             margin: const EdgeInsets.only(bottom: 10),

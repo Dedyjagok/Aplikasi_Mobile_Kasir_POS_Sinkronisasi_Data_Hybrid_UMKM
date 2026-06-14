@@ -3,8 +3,12 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
+import '../../models/app_settings_model.dart';
+import '../../providers/session_provider.dart';
 import '../../providers/settings_provider.dart';
+import '../products/product_category_screen.dart';
 import 'cashier_management_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -23,11 +27,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late TextEditingController _refillAmbilCtrl;
   late TextEditingController _thresholdCtrl;
   late TextEditingController _currencyCtrl;
+  late TextEditingController _ownerPinCtrl;
   bool _isSaving = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!context.read<SessionProvider>().isOwner) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Akses Ditolak')));
+      }
+    });
+
     final s = context.read<SettingsProvider>().settings;
     _storeNameCtrl = TextEditingController(text: s.storeName);
     _addressCtrl = TextEditingController(text: s.storeAddress);
@@ -40,13 +52,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _thresholdCtrl =
         TextEditingController(text: s.lowStockThreshold.toString());
     _currencyCtrl = TextEditingController(text: s.currencySymbol);
+    _ownerPinCtrl = TextEditingController(text: s.ownerPin);
   }
 
   @override
   void dispose() {
     for (final c in [
       _storeNameCtrl, _addressCtrl, _phoneCtrl, _footerCtrl,
-      _refillAntarCtrl, _refillAmbilCtrl, _thresholdCtrl, _currencyCtrl,
+      _refillAntarCtrl, _refillAmbilCtrl, _thresholdCtrl, _currencyCtrl, _ownerPinCtrl
     ]) {
       c.dispose();
     }
@@ -67,17 +80,93 @@ class _SettingsScreenState extends State<SettingsScreen> {
       refillPriceAmbil: int.tryParse(_refillAmbilCtrl.text) ?? 4000,
       lowStockThreshold: int.tryParse(_thresholdCtrl.text) ?? 10,
       currencySymbol: _currencyCtrl.text.trim(),
+      ownerPin: _ownerPinCtrl.text.trim().isEmpty ? '123456' : _ownerPinCtrl.text.trim(),
     );
 
     await context.read<SettingsProvider>().updateSettings(updated);
+    if (!mounted) return;
     setState(() => _isSaving = false);
 
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         content: Text('✅ Pengaturan berhasil disimpan'),
         backgroundColor: Color(0xFF00695C),
       ));
-    }
+  }
+
+  Future<void> _changePassword() async {
+    final passCtrl = TextEditingController();
+    final confirmCtrl = TextEditingController();
+    bool isLoading = false;
+    String? errorMsg;
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setStateDialog) => AlertDialog(
+          title: const Text('Ganti Password Akun'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: passCtrl,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: 'Password Baru'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: confirmCtrl,
+                obscureText: true,
+                decoration: InputDecoration(
+                  labelText: 'Konfirmasi Password',
+                  errorText: errorMsg,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: isLoading ? null : () => Navigator.pop(ctx),
+              child: const Text('Batal'),
+            ),
+            ElevatedButton(
+              onPressed: isLoading
+                  ? null
+                  : () async {
+                      if (passCtrl.text.length < 6) {
+                        setStateDialog(() => errorMsg = 'Password minimal 6 karakter');
+                        return;
+                      }
+                      if (passCtrl.text != confirmCtrl.text) {
+                        setStateDialog(() => errorMsg = 'Password tidak cocok');
+                        return;
+                      }
+                      setStateDialog(() {
+                        isLoading = true;
+                        errorMsg = null;
+                      });
+                      try {
+                        await FirebaseAuth.instance.currentUser?.updatePassword(passCtrl.text);
+                        if (mounted) {
+                          Navigator.pop(ctx);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Password berhasil diubah')),
+                          );
+                        }
+                      } catch (e) {
+                        setStateDialog(() {
+                          isLoading = false;
+                          errorMsg = 'Gagal mengubah password. Anda mungkin perlu login ulang.';
+                        });
+                      }
+                    },
+              child: isLoading
+                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Text('Simpan'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -125,6 +214,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ctrl: _footerCtrl,
               hint: 'Contoh: Terima Kasih! Silakan Datang Kembali.',
               maxLines: 2,
+            ),
+            const SizedBox(height: 12),
+            _field(
+              label: 'PIN Owner (Akses Offline)',
+              ctrl: _ownerPinCtrl,
+              hint: '123456',
+              keyboard: TextInputType.number,
+              isNum: true,
             ),
             const SizedBox(height: 24),
 
@@ -187,8 +284,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     hint: 'Rp',
                   ),
                 ),
-                ),
               ],
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const ProductCategoryScreen(),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.category_outlined, color: Color(0xFF00695C)),
+                label: const Text(
+                  'Kelola Kategori Produk',
+                  style: TextStyle(color: Color(0xFF00695C)),
+                ),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  side: const BorderSide(color: Color(0xFF00695C)),
+                ),
+              ),
             ),
             const SizedBox(height: 32),
 
@@ -215,6 +334,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 icon: const Icon(Icons.manage_accounts, color: Color(0xFF00695C)),
                 label: const Text(
                   'Kelola Kasir',
+                  style: TextStyle(color: Color(0xFF00695C)),
+                ),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  side: const BorderSide(color: Color(0xFF00695C)),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _changePassword,
+                icon: const Icon(Icons.lock_reset, color: Color(0xFF00695C)),
+                label: const Text(
+                  'Ganti Password Akun',
                   style: TextStyle(color: Color(0xFF00695C)),
                 ),
                 style: OutlinedButton.styleFrom(

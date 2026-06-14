@@ -17,6 +17,7 @@ extension RefillTypeExt on RefillType {
 /// Satu record pencatatan isi ulang air RO.
 class RefillRecord {
   final String id;
+  final String userId;
   final DateTime timestamp;
   final RefillType type;
   final int price; // harga saat transaksi (snapshot dari pengaturan)
@@ -24,6 +25,7 @@ class RefillRecord {
 
   RefillRecord({
     required this.id,
+    required this.userId,
     required this.timestamp,
     required this.type,
     required this.price,
@@ -33,6 +35,7 @@ class RefillRecord {
   // ── SQLite ──────────────────────────────────────────────
   Map<String, dynamic> toSqliteMap() => {
         'id': id,
+        'user_id': userId,
         'timestamp': timestamp.toIso8601String(),
         'type': type.value,
         'price': price,
@@ -41,6 +44,7 @@ class RefillRecord {
 
   factory RefillRecord.fromSqliteMap(Map<String, dynamic> map) => RefillRecord(
         id: map['id'] as String,
+        userId: map['user_id'] as String? ?? '',
         timestamp: DateTime.parse(map['timestamp'] as String),
         type: RefillTypeExt.fromString(map['type'] as String),
         price: map['price'] as int,
@@ -59,6 +63,7 @@ class RefillRecord {
     final data = doc.data() as Map<String, dynamic>;
     return RefillRecord(
       id: doc.id,
+      userId: data['user_id'] as String? ?? '',
       timestamp: (data['timestamp'] as Timestamp).toDate(),
       type: RefillTypeExt.fromString(data['type'] as String? ?? 'ambil'),
       price: data['price'] as int? ?? 0,

@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import '../models/refill_record_model.dart';
@@ -64,17 +65,19 @@ class RefillProvider extends ChangeNotifier {
   Future<void> addRecord(RefillType type, int price) async {
     final record = RefillRecord(
       id: const Uuid().v4(),
+      userId: FirebaseAuth.instance.currentUser?.uid ?? '',
       timestamp: DateTime.now(),
       type: type,
       price: price,
     );
     await _localDb.insertRefillRecord(record);
-    // Coba langsung sync ke cloud
-    try {
-      await _cloudDb.addRefillRecord(record);
-      await _localDb.markRefillRecordSynced(record.id);
+    // Sinkronisasi ke cloud (fire and forget) agar UI tidak ngehang saat offline
+    _cloudDb.addRefillRecord(record).then((_) {
+      _localDb.markRefillRecordSynced(record.id);
       record.isSynced = true;
-    } catch (_) {}
+      notifyListeners();
+    }).catchError((_) {});
+    
     _todayRecords.insert(0, record);
     notifyListeners();
   }

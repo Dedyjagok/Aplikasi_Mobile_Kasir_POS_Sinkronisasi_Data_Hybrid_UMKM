@@ -16,6 +16,8 @@ class RefillMonthlyScreen extends StatefulWidget {
 
 class _RefillMonthlyScreenState extends State<RefillMonthlyScreen> {
   DateTime _month = DateTime.now();
+  DateTime? _selectedDay;
+  String _selectedFilter = 'Semua';
 
   @override
   void initState() {
@@ -28,16 +30,20 @@ class _RefillMonthlyScreenState extends State<RefillMonthlyScreen> {
   }
 
   void _prevMonth() {
-    setState(() =>
-        _month = DateTime(_month.year, _month.month - 1));
+    setState(() {
+      _month = DateTime(_month.year, _month.month - 1);
+      _selectedDay = null;
+    });
     _load();
   }
 
   void _nextMonth() {
     final now = DateTime.now();
     if (_month.year == now.year && _month.month == now.month) return;
-    setState(() =>
-        _month = DateTime(_month.year, _month.month + 1));
+    setState(() {
+      _month = DateTime(_month.year, _month.month + 1);
+      _selectedDay = null;
+    });
     _load();
   }
 
@@ -54,8 +60,25 @@ class _RefillMonthlyScreenState extends State<RefillMonthlyScreen> {
     final isCurrentMonth =
         _month.year == now.year && _month.month == now.month;
 
+    // Terapkan Filter
+    var filteredRecords = refill.monthRecords.where((r) {
+      bool passDay = true;
+      if (_selectedDay != null) {
+        passDay = r.timestamp.year == _selectedDay!.year &&
+            r.timestamp.month == _selectedDay!.month &&
+            r.timestamp.day == _selectedDay!.day;
+      }
+      bool passType = true;
+      if (_selectedFilter == 'Ambil Sendiri') {
+        passType = r.type.value == 'ambil';
+      } else if (_selectedFilter == 'Diantar') {
+        passType = r.type.value == 'antar';
+      }
+      return passDay && passType;
+    }).toList();
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Rekap Bulanan Refill')),
+      appBar: AppBar(title: const Text('Riwayat & Rekap Refill')),
       body: refill.isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
@@ -161,24 +184,89 @@ class _RefillMonthlyScreenState extends State<RefillMonthlyScreen> {
                   ),
                   const SizedBox(height: 20),
 
+                  // ── Filter Riwayat ────────────────────
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.calendar_today, size: 16),
+                          label: Text(
+                            _selectedDay == null
+                                ? 'Pilih Hari'
+                                : DateFormat('dd MMM').format(_selectedDay!),
+                            style: GoogleFonts.poppins(fontSize: 13),
+                          ),
+                          onPressed: () async {
+                            // Mencari batas hari pada bulan yang dipilih
+                            final lastDayOfMonth = DateTime(_month.year, _month.month + 1, 0).day;
+                            
+                            // Jika bulan saat ini, batasi sampai hari ini
+                            final maxDay = isCurrentMonth ? now.day : lastDayOfMonth;
+                            
+                            final picked = await showDatePicker(
+                              context: context,
+                              initialDate: _selectedDay ?? DateTime(_month.year, _month.month, isCurrentMonth ? now.day : 1),
+                              firstDate: DateTime(_month.year, _month.month, 1),
+                              lastDate: DateTime(_month.year, _month.month, maxDay),
+                            );
+                            if (picked != null) {
+                              setState(() => _selectedDay = picked);
+                            }
+                          },
+                        ),
+                      ),
+                      if (_selectedDay != null)
+                        IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () => setState(() => _selectedDay = null),
+                          tooltip: 'Hapus filter hari',
+                        ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          value: _selectedFilter,
+                          decoration: const InputDecoration(
+                            contentPadding: EdgeInsets.symmetric(horizontal: 12),
+                            border: OutlineInputBorder(),
+                          ),
+                          items: ['Semua', 'Ambil Sendiri', 'Diantar']
+                              .map((f) => DropdownMenuItem(
+                                  value: f,
+                                  child: Text(f,
+                                      style: GoogleFonts.poppins(
+                                          fontSize: 13))))
+                              .toList(),
+                          onChanged: (val) {
+                            if (val != null) {
+                              setState(() => _selectedFilter = val);
+                            }
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
                   // ── Daftar Record Bulan Ini ───────────
                   Text(
-                    'Semua Record Bulan Ini (${refill.monthRecords.length})',
+                    _selectedDay == null
+                        ? 'Semua Record Bulan Ini (${filteredRecords.length})'
+                        : 'Record Tgl ${DateFormat('dd MMM').format(_selectedDay!)} (${filteredRecords.length})',
                     style: GoogleFonts.poppins(
                         fontWeight: FontWeight.w600, fontSize: 15),
                   ),
                   const SizedBox(height: 10),
-                  if (refill.monthRecords.isEmpty)
+                  if (filteredRecords.isEmpty)
                     Center(
                       child: Padding(
                         padding: const EdgeInsets.all(24),
-                        child: Text('Belum ada data refill bulan ini',
+                        child: Text('Belum ada data untuk filter ini',
                             style: GoogleFonts.poppins(
                                 color: Colors.grey)),
                       ),
                     )
                   else
-                    ...refill.monthRecords.map((r) => Card(
+                    ...filteredRecords.map((r) => Card(
                           margin: const EdgeInsets.only(bottom: 6),
                           child: ListTile(
                             dense: true,

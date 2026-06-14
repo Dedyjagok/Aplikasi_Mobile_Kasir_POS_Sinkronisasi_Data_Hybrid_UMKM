@@ -9,6 +9,8 @@ class AppSettings {
   final int refillPriceAmbil; // harga isi ulang + ambil sendiri
   final int lowStockThreshold; // batas stok minimum sebelum notifikasi
   final String currencySymbol;
+  final String ownerPin; // PIN untuk login owner (offline)
+  final List<String> productCategories; // Daftar kategori produk
 
   const AppSettings({
     this.storeName = 'Nama Warung Anda',
@@ -19,6 +21,8 @@ class AppSettings {
     this.refillPriceAmbil = 4000,
     this.lowStockThreshold = 10,
     this.currencySymbol = 'Rp',
+    this.ownerPin = '123456', // default PIN
+    this.productCategories = const ['Makanan', 'Minuman', 'Lainnya'],
   });
 
   Map<String, dynamic> toMap() => {
@@ -30,6 +34,8 @@ class AppSettings {
         'refill_price_ambil': refillPriceAmbil,
         'low_stock_threshold': lowStockThreshold,
         'currency_symbol': currencySymbol,
+        'owner_pin': ownerPin,
+        'product_categories': productCategories,
       };
 
   factory AppSettings.fromMap(Map<String, dynamic> map) => AppSettings(
@@ -42,6 +48,10 @@ class AppSettings {
         refillPriceAmbil: map['refill_price_ambil'] ?? 4000,
         lowStockThreshold: map['low_stock_threshold'] ?? 10,
         currencySymbol: map['currency_symbol'] ?? 'Rp',
+        ownerPin: map['owner_pin'] ?? '123456',
+        productCategories: map['product_categories'] != null 
+            ? List<String>.from(map['product_categories'])
+            : const ['Makanan', 'Minuman', 'Lainnya'],
       );
 
   AppSettings copyWith({
@@ -53,6 +63,8 @@ class AppSettings {
     int? refillPriceAmbil,
     int? lowStockThreshold,
     String? currencySymbol,
+    String? ownerPin,
+    List<String>? productCategories,
   }) =>
       AppSettings(
         storeName: storeName ?? this.storeName,
@@ -63,5 +75,7 @@ class AppSettings {
         refillPriceAmbil: refillPriceAmbil ?? this.refillPriceAmbil,
         lowStockThreshold: lowStockThreshold ?? this.lowStockThreshold,
         currencySymbol: currencySymbol ?? this.currencySymbol,
+        ownerPin: ownerPin ?? this.ownerPin,
+        productCategories: productCategories ?? this.productCategories,
       );
 }

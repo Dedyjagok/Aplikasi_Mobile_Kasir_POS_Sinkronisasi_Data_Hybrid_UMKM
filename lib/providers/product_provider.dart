@@ -17,8 +17,7 @@ class ProductProvider extends ChangeNotifier {
       ? _products
       : _products
           .where((p) =>
-              p.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-              p.category.toLowerCase().contains(_searchQuery.toLowerCase()))
+              p.name.toLowerCase().contains(_searchQuery.toLowerCase()))
           .toList();
 
   List<Product> get lowStockProducts =>
@@ -52,41 +51,34 @@ class ProductProvider extends ChangeNotifier {
 
   Future<void> addProduct(Product product) async {
     await _localDb.insertProduct(product);
-    try {
-      await _cloudDb.addProduct(product);
-    } catch (_) {}
+    // Jalankan ke cloud tanpa memblokir (fire and forget)
+    _cloudDb.addProduct(product).catchError((_) {});
+    
     _products = await _localDb.getAllProducts();
     notifyListeners();
   }
 
   Future<void> updateProduct(Product product) async {
     await _localDb.updateProduct(product);
-    try {
-      await _cloudDb.updateProduct(product);
-    } catch (_) {}
+    _cloudDb.updateProduct(product).catchError((_) {});
     _products = await _localDb.getAllProducts();
     notifyListeners();
   }
 
   Future<void> deleteProduct(String id) async {
     await _localDb.deleteProduct(id);
-    try {
-      await _cloudDb.deleteProduct(id);
-    } catch (_) {}
+    _cloudDb.deleteProduct(id).catchError((_) {});
     _products.removeWhere((p) => p.id == id);
     notifyListeners();
   }
 
-  /// Kurangi stok setelah transaksi POS selesai.
   Future<void> deductStock(String productId, int qty) async {
     final idx = _products.indexWhere((p) => p.id == productId);
     if (idx < 0) return;
     final newStock = (_products[idx].stock - qty).clamp(0, 9999);
     _products[idx].stock = newStock;
     await _localDb.updateProductStock(productId, newStock);
-    try {
-      await _cloudDb.updateProductStock(productId, newStock);
-    } catch (_) {}
+    _cloudDb.updateProductStock(productId, newStock).catchError((_) {});
     notifyListeners();
   }
 

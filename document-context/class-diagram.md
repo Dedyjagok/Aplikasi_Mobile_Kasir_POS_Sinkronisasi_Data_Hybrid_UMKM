@@ -1,6 +1,6 @@
-# Class Diagram: Sistem Kasir & Refill Hybrid
+# Class Diagram: Sistem Kasir & Refill Hybrid (Multi-Tenancy & Freemium)
 
-Dokumen ini memuat rancangan Class Diagram yang menggambarkan struktur data (*Models*), relasi antar entitas, serta interaksi antara lapisan layanan (*Services*) untuk mengelola arsitektur *hybrid* (SQLite lokal dan Firestore cloud).
+Dokumen ini memuat rancangan Class Diagram yang menggambarkan struktur data (*Models*), State Management (*Providers*), serta interaksi antara lapisan layanan (*Services*) untuk mengelola arsitektur *hybrid* (SQLite lokal dan Firestore cloud) yang terintegrasi dengan sistem *Multi-Tenancy* (berbasis UID) dan *Freemium* (RevenueCat).
 
 ```mermaid
 classDiagram
@@ -10,6 +10,7 @@ classDiagram
 
     class Product {
       +String id
+      +String userId
       +String name
       +String category
       +int costPrice
@@ -17,20 +18,21 @@ classDiagram
       +int stock
       +int lowStockThreshold
       +DateTime updatedAt
-      +toSqliteMap() Map
-      +fromSqliteMap(Map) Product
+      +toMap() Map
+      +fromMap(Map) Product
     }
 
     class PosTransaction {
       +String id
+      +String userId
       +DateTime timestamp
       +int totalAmount
       +int cashReceived
       +int changeAmount
       +String paymentMethod
       +bool isSynced
-      +toSqliteMap() Map
-      +toFirestoreMap() Map
+      +toMap() Map
+      +fromMap(Map) PosTransaction
     }
 
     class PosTransactionItem {
@@ -41,18 +43,19 @@ classDiagram
       +int qty
       +int unitPrice
       +int subtotal
-      +toSqliteMap() Map
-      +toFirestoreMap() Map
+      +toMap() Map
+      +fromMap(Map) PosTransactionItem
     }
 
     class RefillRecord {
       +String id
+      +String userId
       +DateTime timestamp
       +String type
       +int price
       +bool isSynced
-      +toSqliteMap() Map
-      +toFirestoreMap() Map
+      +toMap() Map
+      +fromMap(Map) RefillRecord
     }
 
     class AppSettings {
@@ -62,10 +65,29 @@ classDiagram
       +int refillPriceAntar
       +int refillPriceAmbil
       +String currencySymbol
+      +toMap() Map
+      +fromMap(Map) AppSettings
+    }
+
+    class Owner {
+      +String uid
+      +String email
+      +String name
+      +bool isPremium
+    }
+
+    class Cashier {
+      +String id
+      +String userId
+      +String name
+      +String pin
+      +bool isActive
+      +toMap() Map
+      +fromMap(Map) Cashier
     }
 
     %% ==========================================
-    %% BAGIAN 2: SERVICES (LOGIC HYBRID)
+    %% BAGIAN 2: SERVICES (CORE LOGIC)
     %% ==========================================
 
     class DatabaseService {
@@ -74,27 +96,63 @@ classDiagram
       +insertProduct(Product)
       +updateProductStock(String, int)
       +insertPosTransaction(PosTransaction)
-      +getUnsyncedPosTransactions() List~PosTransaction~
-      +insertRefillRecord(RefillRecord)
-      +getUnsyncedRefillRecords() List~RefillRecord~
+      +insertCashier(Map)
+      +getCashiers(String userId) List~Map~
+      +getUnsyncedPosTransactions(String userId) List~PosTransaction~
       +markPosTransactionSynced(String id)
-      +markRefillRecordSynced(String id)
     }
 
     class FirestoreService {
       <<Firebase Cloud (Online)>>
       -FirebaseFirestore _firestore
-      +addPosTransaction(PosTransaction)
-      +addRefillRecord(RefillRecord)
+      +batchAddPosTransactions(List)
+      +batchAddRefillRecords(List)
+      %% Data disimpan dalam users/{uid}/...
     }
 
     class SyncService {
       <<Background Worker>>
       -Connectivity _connectivity
-      -DatabaseService _dbService
-      -FirestoreService _firestoreService
-      +startMonitoring()
-      +syncPendingData()
+      -DatabaseService _localDb
+      -FirestoreService _cloudDb
+      +startListening()
+      +syncAll()
+      %% Mengecek RevenueCatService().isPremium
+    }
+
+    class RevenueCatService {
+      <<Monetization Gateway>>
+      +bool isPremium
+      +initialize()
+      +checkPremiumStatus()
+    }
+
+    %% ==========================================
+    %% BAGIAN 3: PROVIDERS (STATE MANAGEMENT)
+    %% ==========================================
+
+    class AuthProvider {
+      +User user
+      +bool isLoggedIn
+      +signIn(email, password)
+      +signOut()
+    }
+
+    class SessionProvider {
+      +bool isActive
+      +String activeRole
+      +String activeName
+      +loginAsOwner(String name)
+      +loginAsCashier(Cashier)
+      +lockScreen()
+    }
+
+    class CashierProvider {
+      +List~Cashier~ cashiers
+      +loadCashiers()
+      +addCashier(name, pin)
+      +updateCashier(id, name, pin)
+      +deleteCashier(id)
     }
 
     %% ==========================================
@@ -107,16 +165,19 @@ classDiagram
     %% Dependensi: DatabaseService mengelola model-model
     DatabaseService ..> Product : manages
     DatabaseService ..> PosTransaction : manages
-    DatabaseService ..> PosTransactionItem : manages
     DatabaseService ..> RefillRecord : manages
-    DatabaseService ..> AppSettings : manages
+    DatabaseService ..> Cashier : manages
 
-    %% Dependensi: FirestoreService mengelola model cloud
-    FirestoreService ..> PosTransaction : pushes
-    FirestoreService ..> RefillRecord : pushes
+    %% Dependensi: AuthProvider mengelola sesi Firebase Auth (Owner)
+    AuthProvider ..> Owner : authenticates
 
-    %% Relasi Sinkronisasi Hybrid
-    SyncService --> DatabaseService : reads unsynced (is_synced=0)
+    %% Dependensi: SyncService mengatur sinkronisasi
+    SyncService --> DatabaseService : reads unsynced
     SyncService --> FirestoreService : writes to cloud
-    SyncService --> DatabaseService : updates status (is_synced=1)
+    SyncService ..> RevenueCatService : checks premium status
+
+    %% Dependensi: Providers memanggil Service/Model
+    CashierProvider --> DatabaseService : queries
+    CashierProvider ..> Cashier : stores state
+    SessionProvider ..> Cashier : utilizes for login
 ```

@@ -1,11 +1,13 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter/services.dart';
 
 import '../../models/cashier_model.dart';
 import '../../providers/cashier_provider.dart';
 import '../../providers/session_provider.dart';
+import '../../providers/settings_provider.dart';
+import '../../providers/auth_provider.dart';
 
 class LockScreen extends StatefulWidget {
   const LockScreen({super.key});
@@ -20,6 +22,7 @@ class _LockScreenState extends State<LockScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<CashierProvider>().loadCashiers();
+      context.read<SettingsProvider>().loadSettings();
     });
   }
 
@@ -40,13 +43,15 @@ class _LockScreenState extends State<LockScreen> {
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text('Masukkan password akun untuk melanjutkan sebagai Owner.'),
+                  const Text('Masukkan PIN Owner untuk melanjutkan.'),
                   const SizedBox(height: 12),
                   TextField(
                     controller: passCtrl,
                     obscureText: true,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     decoration: InputDecoration(
-                      labelText: 'Password',
+                      labelText: 'PIN Owner',
                       errorText: error,
                     ),
                   ),
@@ -60,28 +65,27 @@ class _LockScreenState extends State<LockScreen> {
                 ElevatedButton(
                   onPressed: isLoading
                       ? null
-                      : () async {
-                          setState(() {
-                            isLoading = true;
-                            error = null;
-                          });
-                          try {
-                            final email = FirebaseAuth.instance.currentUser?.email;
-                            if (email != null) {
-                              await FirebaseAuth.instance.signInWithEmailAndPassword(
-                                  email: email, password: passCtrl.text);
+                        : () async {
+                            setState(() {
+                              isLoading = true;
+                              error = null;
+                            });
+                            // Tunggu sebentar agar UI terlihat natural
+                            await Future.delayed(const Duration(milliseconds: 300));
+                            
+                            final settings = context.read<SettingsProvider>().settings;
+                            if (passCtrl.text == settings.ownerPin) {
                               if (context.mounted) {
                                 context.read<SessionProvider>().loginAsOwner('Owner');
                                 Navigator.pop(ctx);
                               }
+                            } else {
+                              setState(() {
+                                isLoading = false;
+                                error = 'PIN salah';
+                              });
                             }
-                          } catch (e) {
-                            setState(() {
-                              isLoading = false;
-                              error = 'Password salah';
-                            });
-                          }
-                        },
+                          },
                   child: isLoading
                       ? const SizedBox(
                           width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
@@ -150,14 +154,54 @@ class _LockScreenState extends State<LockScreen> {
     );
   }
 
+  void _confirmLogout(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Keluar Akun?'),
+        content: const Text(
+            'Apakah Anda yakin ingin keluar dari akun toko ini? Anda harus login kembali dengan Email dan Password jika keluar.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () {
+              Navigator.pop(ctx);
+              context.read<AuthProvider>().signOut();
+            },
+            child: const Text('Keluar Akun'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        actions: [
+          TextButton.icon(
+            onPressed: () => _confirmLogout(context),
+            icon: const Icon(Icons.logout, color: Colors.red),
+            label: const Text('Keluar', style: TextStyle(color: Colors.red)),
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
       body: SafeArea(
         child: Column(
           children: [
-            const SizedBox(height: 60),
+            const SizedBox(height: 20),
             Text(
               'Pilih Profil',
               style: GoogleFonts.poppins(

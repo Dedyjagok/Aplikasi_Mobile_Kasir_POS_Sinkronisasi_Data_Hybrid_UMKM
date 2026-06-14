@@ -1,9 +1,11 @@
+import 'dart:convert';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../models/app_settings_model.dart';
 import '../models/pos_transaction_model.dart';
 import '../models/product_model.dart';
+import '../models/category_model.dart';
 import '../models/refill_record_model.dart';
 
 /// Singleton service untuk semua operasi database SQLite lokal.
@@ -24,7 +26,7 @@ class DatabaseService {
     final path = join(dbPath, 'kasir_umkm.db');
     return await openDatabase(
       path,
-      version: 2, // Naik versi untuk memicu onUpgrade
+      version: 3, // Naik versi untuk memicu onUpgrade
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -35,6 +37,7 @@ class DatabaseService {
     await db.execute('DROP TABLE IF EXISTS pos_transaction_items');
     await db.execute('DROP TABLE IF EXISTS pos_transactions');
     await db.execute('DROP TABLE IF EXISTS products');
+    await db.execute('DROP TABLE IF EXISTS categories');
     await db.execute('DROP TABLE IF EXISTS refill_records');
     await db.execute('DROP TABLE IF EXISTS app_settings');
     await db.execute('DROP TABLE IF EXISTS cashiers');
@@ -42,18 +45,29 @@ class DatabaseService {
   }
 
   Future<void> _onCreate(Database db, int version) async {
+    // Tabel Kategori
+    await db.execute('''
+      CREATE TABLE categories (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        updated_at TEXT
+      )
+    ''');
+
     // Tabel Produk
     await db.execute('''
       CREATE TABLE products (
         id TEXT PRIMARY KEY,
         user_id TEXT NOT NULL,
         name TEXT NOT NULL,
-        category TEXT,
+        category_id TEXT,
         cost_price INTEGER NOT NULL,
         sell_price INTEGER NOT NULL,
         stock INTEGER NOT NULL DEFAULT 0,
         low_stock_threshold INTEGER DEFAULT 10,
-        updated_at TEXT
+        updated_at TEXT,
+        FOREIGN KEY (category_id) REFERENCES categories(id)
       )
     ''');
 
@@ -115,6 +129,33 @@ class DatabaseService {
         is_active INTEGER DEFAULT 1
       )
     ''');
+  }
+
+  // ═══════════════════════════════════════════════════════
+  //  KATEGORI
+  // ═══════════════════════════════════════════════════════
+
+  Future<List<CategoryModel>> getAllCategories() async {
+    final db = await database;
+    final rows = await db.query('categories', orderBy: 'name ASC');
+    return rows.map(CategoryModel.fromSqliteMap).toList();
+  }
+
+  Future<void> insertCategory(CategoryModel category) async {
+    final db = await database;
+    await db.insert('categories', category.toSqliteMap(),
+        conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<void> updateCategory(CategoryModel category) async {
+    final db = await database;
+    await db.update('categories', category.toSqliteMap(),
+        where: 'id = ?', whereArgs: [category.id]);
+  }
+
+  Future<void> deleteCategory(String id) async {
+    final db = await database;
+    await db.delete('categories', where: 'id = ?', whereArgs: [id]);
   }
 
   // ═══════════════════════════════════════════════════════
@@ -213,6 +254,16 @@ class DatabaseService {
     return rows.map(PosTransactionItem.fromSqliteMap).toList();
   }
 
+  Future<void> deletePosTransaction(String id) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      await txn.delete('pos_transaction_items',
+          where: 'transaction_id = ?', whereArgs: [id]);
+      await txn.delete('pos_transactions',
+          where: 'id = ?', whereArgs: [id]);
+    });
+  }
+
   // ═══════════════════════════════════════════════════════
   //  REFILL AIR RO
   // ═══════════════════════════════════════════════════════
@@ -257,6 +308,16 @@ class DatabaseService {
     final rows = await db.query('app_settings');
     if (rows.isEmpty) return const AppSettings();
     final map = {for (final r in rows) r['key'] as String: r['value'] as String};
+    
+    // Parse JSON safely for list
+    List<String>? categories;
+    if (map['product_categories'] != null) {
+      try {
+        final List<dynamic> decoded = jsonDecode(map['product_categories']!);
+        categories = decoded.map((e) => e.toString()).toList();
+      } catch (_) {}
+    }
+
     return AppSettings.fromMap({
       'store_name': map['store_name'],
       'store_address': map['store_address'],
@@ -266,6 +327,8 @@ class DatabaseService {
       'refill_price_ambil': int.tryParse(map['refill_price_ambil'] ?? '4000'),
       'low_stock_threshold': int.tryParse(map['low_stock_threshold'] ?? '10'),
       'currency_symbol': map['currency_symbol'],
+      'owner_pin': map['owner_pin'],
+      'product_categories': categories,
     });
   }
 
@@ -273,9 +336,16 @@ class DatabaseService {
     final db = await database;
     final batch = db.batch();
     settings.toMap().forEach((key, value) {
+      String stringValue;
+      if (value is List) {
+        stringValue = jsonEncode(value);
+      } else {
+        stringValue = value.toString();
+      }
+      
       batch.insert(
         'app_settings',
-        {'key': key, 'value': value.toString()},
+        {'key': key, 'value': stringValue},
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
     });

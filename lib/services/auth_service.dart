@@ -21,4 +21,12 @@ class AuthService {
   Future<void> signOut() async {
     await _auth.signOut();
   }
+
+  /// Registrasi akun baru (Owner).
+  Future<UserCredential> signUp(String email, String password) async {
+    return await _auth.createUserWithEmailAndPassword(
+      email: email.trim(),
+      password: password.trim(),
+    );
+  }
 }

@@ -29,8 +29,16 @@ class PrinterService {
 
   /// Putuskan koneksi printer.
   Future<void> disconnect() async {
-    await _bt.disconnect();
-    _isConnected = false;
+    try {
+      final isConnected = await _bt.isConnected;
+      if (isConnected == true) {
+        await _bt.disconnect();
+      }
+    } catch (_) {
+      // Abaikan error jika sudah disconnect dari sisi OS
+    } finally {
+      _isConnected = false;
+    }
   }
 
   /// Cetak struk transaksi POS.

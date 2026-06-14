@@ -6,7 +6,6 @@ import 'package:provider/provider.dart';
 import '../../models/refill_record_model.dart';
 import '../../providers/refill_provider.dart';
 import '../../providers/settings_provider.dart';
-import 'refill_history_screen.dart';
 import 'refill_monthly_screen.dart';
 
 class RefillEntryScreen extends StatefulWidget {
@@ -37,12 +36,6 @@ class _RefillEntryScreenState extends State<RefillEntryScreen> {
       appBar: AppBar(
         title: const Text('Refill Air RO'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.history),
-            onPressed: () => Navigator.push(context,
-                MaterialPageRoute(
-                    builder: (_) => const RefillHistoryScreen())),
-          ),
           IconButton(
             icon: const Icon(Icons.bar_chart),
             onPressed: () => Navigator.push(context,

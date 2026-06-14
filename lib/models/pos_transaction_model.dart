@@ -53,6 +53,7 @@ class PosTransactionItem {
 /// Header transaksi POS (satu kali bayar).
 class PosTransaction {
   final String id;
+  final String userId;
   final DateTime timestamp;
   final int totalAmount;
   final int cashReceived;
@@ -63,6 +64,7 @@ class PosTransaction {
 
   PosTransaction({
     required this.id,
+    required this.userId,
     required this.timestamp,
     required this.totalAmount,
     required this.cashReceived,
@@ -74,6 +76,7 @@ class PosTransaction {
 
   Map<String, dynamic> toSqliteMap() => {
         'id': id,
+        'user_id': userId,
         'timestamp': timestamp.toIso8601String(),
         'total_amount': totalAmount,
         'cash_received': cashReceived,
@@ -88,6 +91,7 @@ class PosTransaction {
   ) =>
       PosTransaction(
         id: map['id'] as String,
+        userId: map['user_id'] as String? ?? '',
         timestamp: DateTime.parse(map['timestamp'] as String),
         totalAmount: map['total_amount'] as int,
         cashReceived: map['cash_received'] as int,

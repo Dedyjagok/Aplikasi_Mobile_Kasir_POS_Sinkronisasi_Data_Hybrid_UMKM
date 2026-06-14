@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/app_settings_model.dart';
 import '../models/pos_transaction_model.dart';
 import '../models/product_model.dart';
+import '../models/category_model.dart';
 import '../models/refill_record_model.dart';
 
 /// Service untuk semua operasi CRUD ke Cloud Firestore.
@@ -10,10 +11,46 @@ class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
   // ── Collections ──────────────────────────────────────────
+  CollectionReference get _users => _db.collection('users');
+  CollectionReference get _categories => _db.collection('categories');
   CollectionReference get _products => _db.collection('products');
   CollectionReference get _posTransactions => _db.collection('pos_transactions');
   CollectionReference get _refillRecords => _db.collection('refill_records');
   DocumentReference get _settings => _db.collection('app_settings').doc('config');
+
+  // ═══════════════════════════════════════════════════════
+  //  USER PROFILE
+  // ═══════════════════════════════════════════════════════
+  Future<void> createOwnerProfile(String uid, String email, String storeName, String phone) async {
+    await _users.doc(uid).set({
+      'email': email,
+      'store_name': storeName,
+      'phone': phone,
+      'created_at': FieldValue.serverTimestamp(),
+      'role': 'owner',
+    }, SetOptions(merge: true));
+  }
+
+  // ═══════════════════════════════════════════════════════
+  //  KATEGORI
+  // ═══════════════════════════════════════════════════════
+
+  Future<List<CategoryModel>> getAllCategories() async {
+    final snapshot = await _categories.orderBy('name').get();
+    return snapshot.docs.map((d) => CategoryModel.fromFirestore(d)).toList();
+  }
+
+  Future<void> addCategory(CategoryModel category) async {
+    await _categories.doc(category.id).set(category.toFirestoreMap());
+  }
+
+  Future<void> updateCategory(CategoryModel category) async {
+    await _categories.doc(category.id).update(category.toFirestoreMap());
+  }
+
+  Future<void> deleteCategory(String id) async {
+    await _categories.doc(id).delete();
+  }
 
   // ═══════════════════════════════════════════════════════
   //  PRODUK
@@ -59,6 +96,10 @@ class FirestoreService {
     await batch.commit();
   }
 
+  Future<void> deletePosTransaction(String id) async {
+    await _posTransactions.doc(id).delete();
+  }
+
   Future<List<PosTransaction>> getPosTransactionsByMonth(
       int year, int month) async {
     final start = DateTime(year, month);
@@ -84,6 +125,7 @@ class FirestoreService {
           .toList();
       return PosTransaction(
         id: doc.id,
+        userId: data['user_id'] as String? ?? '',
         timestamp: (data['timestamp'] as Timestamp).toDate(),
         totalAmount: data['total_amount'] ?? 0,
         cashReceived: data['cash_received'] ?? 0,

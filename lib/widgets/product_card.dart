@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../models/product_model.dart';
+import '../providers/category_provider.dart';
 
 /// Kartu produk yang ditampilkan di layar POS kasir.
 class ProductCard extends StatelessWidget {
@@ -25,6 +27,8 @@ class ProductCard extends StatelessWidget {
     ).format(product.sellPrice);
 
     final isLow = product.isLowStock;
+    final categories = context.watch<CategoryProvider>().categories;
+    final catName = categories.where((c) => c.id == product.categoryId).firstOrNull?.name ?? '';
 
     return GestureDetector(
       onTap: product.stock > 0 ? onTap : null,
@@ -55,9 +59,9 @@ class ProductCard extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-                if (product.category.isNotEmpty)
+                if (product.categoryId.isNotEmpty && catName.isNotEmpty)
                   Text(
-                    product.category,
+                    catName,
                     style: GoogleFonts.poppins(
                         fontSize: 11, color: Colors.grey.shade600),
                   ),

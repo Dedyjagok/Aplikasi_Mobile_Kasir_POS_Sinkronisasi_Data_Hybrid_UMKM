@@ -127,17 +127,26 @@
     ### Skema Database SQLite — Modul POS
 
     ```sql
+    -- Kategori Produk
+    CREATE TABLE categories (
+      id            TEXT PRIMARY KEY,
+      user_id       TEXT NOT NULL,
+      name          TEXT NOT NULL,
+      updated_at    TEXT
+    );
+
     -- Katalog Produk
     CREATE TABLE products (
-    id            TEXT PRIMARY KEY,
-    user_id       TEXT NOT NULL,
-    name          TEXT NOT NULL,
-    category      TEXT,
-    cost_price    INTEGER NOT NULL,
-    sell_price    INTEGER NOT NULL,
-    stock         INTEGER NOT NULL DEFAULT 0,
-    low_stock_threshold INTEGER DEFAULT 5,
-    updated_at    TEXT
+      id            TEXT PRIMARY KEY,
+      user_id       TEXT NOT NULL,
+      name          TEXT NOT NULL,
+      category_id   TEXT,
+      cost_price    INTEGER NOT NULL,
+      sell_price    INTEGER NOT NULL,
+      stock         INTEGER NOT NULL DEFAULT 0,
+      low_stock_threshold INTEGER DEFAULT 5,
+      updated_at    TEXT,
+      FOREIGN KEY (category_id) REFERENCES categories(id)
     );
 
     -- Header Transaksi Produk

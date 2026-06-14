@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -46,6 +47,7 @@ class _CartScreenState extends State<CartScreen> {
     final trxId = const Uuid().v4();
     final trx = PosTransaction(
       id: trxId,
+      userId: FirebaseAuth.instance.currentUser?.uid ?? '',
       timestamp: DateTime.now(),
       totalAmount: cart.total,
       cashReceived: _cashAmount,
@@ -56,11 +58,10 @@ class _CartScreenState extends State<CartScreen> {
     // Simpan ke SQLite
     await DatabaseService().insertPosTransaction(trx);
 
-    // Coba sync ke Firestore
-    try {
-      await FirestoreService().addPosTransaction(trx);
-      await DatabaseService().markPosTransactionSynced(trxId);
-    } catch (_) {}
+    // Jalankan sync ke Firestore tanpa memblokir UI (fire and forget)
+    FirestoreService().addPosTransaction(trx).then((_) {
+      DatabaseService().markPosTransactionSynced(trxId);
+    }).catchError((_) {});
 
     // Kurangi stok setiap produk
     for (final item in cart.itemList) {

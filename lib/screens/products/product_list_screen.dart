@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/product_provider.dart';
+import '../../providers/category_provider.dart';
 import '../../providers/settings_provider.dart';
 import 'product_form_screen.dart';
 
@@ -26,6 +27,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
   @override
   Widget build(BuildContext context) {
     final products = context.watch<ProductProvider>();
+    final categories = context.watch<CategoryProvider>().categories;
     final settings = context.watch<SettingsProvider>().settings;
     final currency = NumberFormat.currency(
         locale: 'id_ID',
@@ -91,6 +93,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                         itemCount: products.products.length,
                         itemBuilder: (_, i) {
                           final p = products.products[i];
+                          final catName = categories.where((c) => c.id == p.categoryId).firstOrNull?.name ?? 'Tanpa Kategori';
                           return Card(
                             margin: const EdgeInsets.only(bottom: 10),
                             child: ListTile(
@@ -116,8 +119,8 @@ class _ProductListScreenState extends State<ProductListScreen> {
                                 crossAxisAlignment:
                                     CrossAxisAlignment.start,
                                 children: [
-                                  if (p.category.isNotEmpty)
-                                    Text(p.category,
+                                  if (p.categoryId.isNotEmpty)
+                                    Text(catName,
                                         style: GoogleFonts.poppins(
                                             fontSize: 12)),
                                   Row(

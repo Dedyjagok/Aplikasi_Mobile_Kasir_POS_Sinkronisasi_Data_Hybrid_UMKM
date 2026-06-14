@@ -3,8 +3,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 /// Model produk untuk modul POS (barang kelontong/dagangan).
 class Product {
   final String id;
+  final String userId;
   final String name;
-  final String category;
+  final String categoryId;
   final int costPrice; // harga modal
   final int sellPrice; // harga jual
   int stock;
@@ -13,8 +14,9 @@ class Product {
 
   Product({
     required this.id,
+    required this.userId,
     required this.name,
-    this.category = '',
+    this.categoryId = '',
     required this.costPrice,
     required this.sellPrice,
     this.stock = 0,
@@ -27,8 +29,9 @@ class Product {
   // ── SQLite ──────────────────────────────────────────────
   Map<String, dynamic> toSqliteMap() => {
         'id': id,
+        'user_id': userId,
         'name': name,
-        'category': category,
+        'category_id': categoryId,
         'cost_price': costPrice,
         'sell_price': sellPrice,
         'stock': stock,
@@ -38,8 +41,9 @@ class Product {
 
   factory Product.fromSqliteMap(Map<String, dynamic> map) => Product(
         id: map['id'] as String,
+        userId: map['user_id'] as String? ?? '',
         name: map['name'] as String,
-        category: map['category'] as String? ?? '',
+        categoryId: map['category_id'] as String? ?? '',
         costPrice: map['cost_price'] as int,
         sellPrice: map['sell_price'] as int,
         stock: map['stock'] as int,
@@ -50,9 +54,10 @@ class Product {
       );
 
   // ── Firestore ───────────────────────────────────────────
+  // ── Firestore ───────────────────────────────────────────
   Map<String, dynamic> toFirestoreMap() => {
         'name': name,
-        'category': category,
+        'category_id': categoryId,
         'cost_price': costPrice,
         'sell_price': sellPrice,
         'stock': stock,
@@ -64,8 +69,9 @@ class Product {
     final data = doc.data() as Map<String, dynamic>;
     return Product(
       id: doc.id,
+      userId: data['user_id'] as String? ?? '',
       name: data['name'] as String? ?? '',
-      category: data['category'] as String? ?? '',
+      categoryId: data['category_id'] as String? ?? '',
       costPrice: data['cost_price'] as int? ?? 0,
       sellPrice: data['sell_price'] as int? ?? 0,
       stock: data['stock'] as int? ?? 0,
@@ -76,7 +82,7 @@ class Product {
 
   Product copyWith({
     String? name,
-    String? category,
+    String? categoryId,
     int? costPrice,
     int? sellPrice,
     int? stock,
@@ -84,8 +90,9 @@ class Product {
   }) =>
       Product(
         id: id,
+        userId: userId,
         name: name ?? this.name,
-        category: category ?? this.category,
+        categoryId: categoryId ?? this.categoryId,
         costPrice: costPrice ?? this.costPrice,
         sellPrice: sellPrice ?? this.sellPrice,
         stock: stock ?? this.stock,

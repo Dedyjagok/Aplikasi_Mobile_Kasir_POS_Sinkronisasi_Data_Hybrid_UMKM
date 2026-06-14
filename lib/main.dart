@@ -2,12 +2,15 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/cart_provider.dart';
 import 'providers/cashier_provider.dart';
 import 'providers/connectivity_provider.dart';
 import 'providers/product_provider.dart';
+import 'providers/pos_history_provider.dart';
+import 'providers/category_provider.dart';
 import 'providers/refill_provider.dart';
 import 'providers/session_provider.dart';
 import 'providers/settings_provider.dart';
@@ -29,6 +32,7 @@ Future<void> _bgHandler(RemoteMessage message) async {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+  await initializeDateFormatting('id_ID', null);
   FirebaseMessaging.onBackgroundMessage(_bgHandler);
 
   // Inisialisasi services
@@ -52,6 +56,8 @@ void main() async {
             create: (_) => SettingsProvider(localDb, cloudDb)),
         ChangeNotifierProvider(
             create: (_) => ProductProvider(localDb, cloudDb)),
+        ChangeNotifierProvider(create: (_) => CategoryProvider()),
+        ChangeNotifierProvider(create: (_) => PosHistoryProvider(localDb, cloudDb)),
         ChangeNotifierProvider(create: (_) => CartProvider()),
         ChangeNotifierProvider(create: (_) => CashierProvider(localDb)),
         ChangeNotifierProvider(create: (_) => SessionProvider()),

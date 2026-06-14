@@ -7,14 +7,15 @@ import '../../providers/auth_provider.dart';
 import '../../providers/connectivity_provider.dart';
 import '../../providers/session_provider.dart';
 import '../../providers/product_provider.dart';
+import '../../providers/category_provider.dart';
 import '../../providers/refill_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../widgets/connectivity_badge.dart';
 import '../../widgets/module_card.dart';
 import '../pos/pos_screen.dart';
 import '../products/product_list_screen.dart';
+import '../products/product_monthly_screen.dart';
 import '../refill/refill_entry_screen.dart';
-import '../refill/refill_history_screen.dart';
 import '../refill/refill_monthly_screen.dart';
 import '../settings/settings_screen.dart';
 import 'package:purchases_ui_flutter/purchases_ui_flutter.dart';
@@ -37,6 +38,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _loadData() async {
     await Future.wait([
       context.read<SettingsProvider>().loadSettings(),
+      context.read<CategoryProvider>().loadCategories(),
       context.read<ProductProvider>().loadProducts(),
       context.read<RefillProvider>().loadTodayRecords(),
     ]);
@@ -48,8 +50,12 @@ class _HomeScreenState extends State<HomeScreen> {
     final isOnline = context.watch<ConnectivityProvider>().isOnline;
     final products = context.watch<ProductProvider>();
     final refill = context.watch<RefillProvider>();
+    final session = context.watch<SessionProvider>();
     final currency = NumberFormat.currency(
-        locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
+      locale: 'id_ID',
+      symbol: 'Rp ',
+      decimalDigits: 0,
+    );
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
@@ -58,14 +64,22 @@ class _HomeScreenState extends State<HomeScreen> {
         actions: [
           IconButton(
             icon: Icon(
-              RevenueCatService().isPremium ? Icons.cloud_done : Icons.cloud_upload,
-              color: RevenueCatService().isPremium ? Colors.green : Colors.orange,
+              RevenueCatService().isPremium
+                  ? Icons.cloud_done
+                  : Icons.cloud_upload,
+              color: RevenueCatService().isPremium
+                  ? Colors.green
+                  : Colors.orange,
             ),
-            tooltip: RevenueCatService().isPremium ? 'Cloud Backup Aktif' : 'Upgrade ke Premium',
+            tooltip: RevenueCatService().isPremium
+                ? 'Cloud Backup Aktif'
+                : 'Upgrade ke Premium',
             onPressed: () async {
               if (RevenueCatService().isPremium) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Akun Anda sudah Premium. Auto-Sync aktif!'))
+                  const SnackBar(
+                    content: Text('Akun Anda sudah Premium. Auto-Sync aktif!'),
+                  ),
                 );
               } else {
                 // Tampilkan UI Paywall dari RevenueCat
@@ -82,12 +96,14 @@ class _HomeScreenState extends State<HomeScreen> {
           PopupMenuButton(
             icon: const Icon(Icons.more_vert),
             itemBuilder: (_) => [
-              PopupMenuItem(
-                child: const Text('Pengaturan'),
-                onTap: () => Navigator.push(context,
-                    MaterialPageRoute(
-                        builder: (_) => const SettingsScreen())),
-              ),
+              if (session.isOwner)
+                PopupMenuItem(
+                  child: const Text('Pengaturan'),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                  ),
+                ),
               PopupMenuItem(
                 child: const Text('Kunci Layar'),
                 onTap: () => context.read<SessionProvider>().lockScreen(),
@@ -106,16 +122,19 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               // ── Tanggal Hari Ini ─────────────────────────
               Text(
-                DateFormat('EEEE, d MMMM yyyy', 'id_ID')
-                    .format(DateTime.now()),
+                DateFormat('EEEE, d MMMM yyyy', 'id_ID').format(DateTime.now()),
                 style: GoogleFonts.poppins(
-                    color: Colors.grey.shade600, fontSize: 13),
+                  color: Colors.grey.shade600,
+                  fontSize: 13,
+                ),
               ),
               const SizedBox(height: 4),
               Text(
                 'Dashboard',
                 style: GoogleFonts.poppins(
-                    fontSize: 24, fontWeight: FontWeight.w700),
+                  fontSize: 24,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               const SizedBox(height: 20),
 
@@ -131,7 +150,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(width: 12),
                   _SummaryChip(
                     label: 'Refill Hari Ini',
-                    value: '${refill.todayCount}x  •  '
+                    value:
+                        '${refill.todayCount}x  •  '
                         '${currency.format(refill.todayIncome)}',
                     icon: Icons.water_drop_outlined,
                     color: const Color(0xFF0097A7),
@@ -144,7 +164,9 @@ class _HomeScreenState extends State<HomeScreen> {
               Text(
                 'Pilih Modul',
                 style: GoogleFonts.poppins(
-                    fontSize: 16, fontWeight: FontWeight.w600),
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               const SizedBox(height: 12),
 
@@ -158,9 +180,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     ? '⚠️ ${products.lowStockProducts.length} stok tipis'
                     : null,
                 onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => const PosScreen())),
+                  context,
+                  MaterialPageRoute(builder: (_) => const PosScreen()),
+                ),
               ),
               const SizedBox(height: 16),
 
@@ -172,9 +194,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 color: const Color(0xFF0097A7),
                 badge: '${refill.todayCount} hari ini',
                 onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => const RefillEntryScreen())),
+                  context,
+                  MaterialPageRoute(builder: (_) => const RefillEntryScreen()),
+                ),
               ),
               const SizedBox(height: 28),
 
@@ -182,47 +204,62 @@ class _HomeScreenState extends State<HomeScreen> {
               Text(
                 'Menu Lainnya',
                 style: GoogleFonts.poppins(
-                    fontSize: 16, fontWeight: FontWeight.w600),
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               const SizedBox(height: 12),
-              Row(
-                children: [
-                  _QuickMenu(
-                    icon: Icons.inventory_2_outlined,
-                    label: 'Katalog\nProduk',
-                    onTap: () => Navigator.push(
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    _QuickMenu(
+                      icon: Icons.inventory_2_outlined,
+                      label: 'Katalog\nProduk',
+                      onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(
-                            builder: (_) => const ProductListScreen())),
-                  ),
-                  const SizedBox(width: 12),
-                  _QuickMenu(
-                    icon: Icons.history,
-                    label: 'Riwayat\nRefill',
-                    onTap: () => Navigator.push(
+                          builder: (_) => const ProductListScreen(),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    _QuickMenu(
+                      icon: Icons.receipt_long,
+                      label: 'Laporan\nPOS',
+                      onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(
-                            builder: (_) => const RefillHistoryScreen())),
-                  ),
-                  const SizedBox(width: 12),
-                  _QuickMenu(
-                    icon: Icons.bar_chart_rounded,
-                    label: 'Rekap\nBulanan',
-                    onTap: () => Navigator.push(
+                          builder: (_) => const PosMonthlyScreen(),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    _QuickMenu(
+                      icon: Icons.bar_chart_rounded,
+                      label: 'Laporan\nRefill',
+                      onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(
-                            builder: (_) => const RefillMonthlyScreen())),
-                  ),
-                  const SizedBox(width: 12),
-                  _QuickMenu(
-                    icon: Icons.settings_outlined,
-                    label: 'Peng-\naturan',
-                    onTap: () => Navigator.push(
+                          builder: (_) => const RefillMonthlyScreen(),
+                        ),
+                      ),
+                    ),
+                    if (session.isOwner) ...[
+                      const SizedBox(width: 12),
+                      _QuickMenu(
+                        icon: Icons.settings_outlined,
+                      label: 'Peng-\naturan',
+                      onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(
-                            builder: (_) => const SettingsScreen())),
-                  ),
-                ],
+                          builder: (_) => const SettingsScreen(),
+                        ),
+                      ),
+                      ),
+                    ],
+                  ],
+                ),
               ),
               const SizedBox(height: 32),
             ],
@@ -256,7 +293,10 @@ class _SummaryChip extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-                color: Colors.black12, blurRadius: 6, offset: const Offset(0, 2))
+              color: Colors.black12,
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
           ],
         ),
         child: Column(
@@ -267,12 +307,16 @@ class _SummaryChip extends StatelessWidget {
             Text(
               label,
               style: GoogleFonts.poppins(
-                  color: Colors.grey.shade600, fontSize: 11),
+                color: Colors.grey.shade600,
+                fontSize: 11,
+              ),
             ),
             Text(
               value,
               style: GoogleFonts.poppins(
-                  fontWeight: FontWeight.w700, fontSize: 13),
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+              ),
             ),
           ],
         ),
@@ -286,24 +330,28 @@ class _QuickMenu extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
 
-  const _QuickMenu(
-      {required this.icon, required this.label, required this.onTap});
+  const _QuickMenu({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 14),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 85,
+        padding: const EdgeInsets.symmetric(vertical: 14),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(14),
             boxShadow: [
               BoxShadow(
-                  color: Colors.black12,
-                  blurRadius: 6,
-                  offset: const Offset(0, 2))
+                color: Colors.black12,
+                blurRadius: 6,
+                offset: const Offset(0, 2),
+              ),
             ],
           ),
           child: Column(
@@ -318,7 +366,6 @@ class _QuickMenu extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
+      );
   }
 }

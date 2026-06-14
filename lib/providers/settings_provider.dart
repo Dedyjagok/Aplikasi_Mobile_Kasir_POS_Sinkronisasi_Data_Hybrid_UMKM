@@ -37,10 +37,7 @@ class SettingsProvider extends ChangeNotifier {
     _settings = newSettings;
     notifyListeners();
     await _localDb.saveSettings(newSettings);
-    try {
-      await _cloudDb.saveSettings(newSettings);
-    } catch (_) {
-      // Akan disinkronkan saat online
-    }
+    // Sinkronkan ke cloud tanpa memblokir (fire and forget)
+    _cloudDb.saveSettings(newSettings).catchError((_) {});
   }
 }

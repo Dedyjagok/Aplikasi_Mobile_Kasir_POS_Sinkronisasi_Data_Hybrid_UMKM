@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
+import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -34,9 +35,17 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFF00695C),
       body: SafeArea(
-        child: Column(
-          children: [
-            // ── Header ──────────────────────────────────────
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: constraints.maxHeight,
+                ),
+                child: IntrinsicHeight(
+                  child: Column(
+                    children: [
+                      // ── Header ──────────────────────────────────────
             Expanded(
               flex: 2,
               child: Center(
@@ -174,12 +183,48 @@ class _LoginScreenState extends State<LoginScreen> {
                               : const Text('Masuk'),
                         ),
                       ),
+
+                      const SizedBox(height: 16),
+
+                      // Navigasi ke Halaman Register
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'Belum punya akun?',
+                            style: GoogleFonts.poppins(
+                                color: Colors.grey.shade600, fontSize: 13),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) => const RegisterScreen()),
+                              );
+                            },
+                            child: Text(
+                              'Daftar di sini',
+                              style: GoogleFonts.poppins(
+                                color: const Color(0xFF00695C),
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
               ),
             ),
-          ],
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
         ),
       ),
     );

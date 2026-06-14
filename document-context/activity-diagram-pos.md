@@ -6,43 +6,41 @@ Dokumen ini memuat Activity Diagram (Diagram Aktivitas) yang menggambarkan alur 
 
 ```mermaid
 flowchart TD
-    %% Node Shapes
-    Start([Mulai Transaksi])
-    End([Selesai])
-    
-    %% Alur Kerja
-    Start --> BukaPOS(Buka Halaman POS)
-    BukaPOS --> PilihProduk(Kasir Memilih Produk dari Katalog)
-    PilihProduk --> Keranjang(Sistem Menambahkan Produk ke Keranjang)
-    
-    Keranjang --> CekTambah{Tambah\nProduk Lain?}
-    CekTambah -- Ya --> PilihProduk
-    CekTambah -- Tidak --> TampilBayar(Kasir Menekan Tombol Bayar)
-    
-    TampilBayar --> HalamanCart(Sistem Menampilkan Halaman Pembayaran)
-    HalamanCart --> InputUang(Kasir Menginput Nominal Uang Pelanggan)
-    InputUang --> Hitung(Sistem Menghitung Kembalian Otomatis)
-    
-    Hitung --> Konfirmasi(Kasir Menekan Tombol 'Simpan/Selesai')
-    
-    %% Proses Background / Sistem
-    Konfirmasi --> ProsesSimpan
-    
-    subgraph Proses Transaksi (Offline-First)
-        ProsesSimpan(Sistem Memproses Transaksi) --> DB1[(Simpan Transaksi ke SQLite\nis_synced = 0)]
-        ProsesSimpan --> DB2[(Kurangi Stok Produk di SQLite)]
+    subgraph Pelanggan
+        A1([Membawa barang belanjaan])
+        A2([Menyerahkan uang pembayaran])
+        A3([Menerima struk dan barang])
     end
     
-    DB1 --> HalamanSukses(Sistem Menampilkan Halaman Sukses)
-    DB2 --> HalamanSukses
+    subgraph Kasir
+        B1(Membuka halaman POS)
+        B2(Memilih produk dari katalog)
+        B3(Menekan tombol Checkout/Bayar)
+        B4(Menginput nominal uang pelanggan)
+        B5(Menekan tombol Simpan & Cetak Struk)
+    end
     
-    %% Opsional Cetak Struk
-    HalamanSukses --> CekCetak{Ingin Cetak\nStruk?}
-    CekCetak -- Ya --> TekanCetak(Kasir Menekan Tombol 'Cetak Struk')
-    TekanCetak --> Printer(Sistem Mengirim Data ESC/POS ke Printer Bluetooth)
-    Printer --> End
-    
-    CekCetak -- Tidak --> End
+    subgraph Sistem
+        C1(Memasukkan produk ke keranjang belanja)
+        C2(Menampilkan total tagihan)
+        C3(Menghitung nominal kembalian otomatis)
+        C4[(Menyimpan transaksi ke SQLite\n& Mengurangi Stok lokal)]
+        C5(Mengirim format ESC/POS ke Printer)
+    end
+
+    %% Alur Proses (Flow)
+    A1 --> B1
+    B1 --> B2
+    B2 --> C1
+    C1 --> B3
+    B3 --> C2
+    C2 --> A2
+    A2 --> B4
+    B4 --> C3
+    C3 --> B5
+    B5 --> C4
+    C4 --> C5
+    C5 --> A3
 ```
 
 ---

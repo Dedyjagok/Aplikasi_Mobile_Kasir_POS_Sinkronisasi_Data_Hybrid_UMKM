@@ -173,6 +173,15 @@
     subtotal           INTEGER NOT NULL,
     FOREIGN KEY (transaction_id) REFERENCES pos_transactions(id)
     );
+
+    -- Akun Kasir (Sistem PIN)
+    CREATE TABLE cashiers (
+      id            TEXT PRIMARY KEY,
+      user_id       TEXT NOT NULL,
+      name          TEXT NOT NULL,
+      pin           TEXT NOT NULL,
+      is_active     INTEGER DEFAULT 1
+    );
     ```
 
     ### Struktur Collection Firestore — Multi-Tenancy

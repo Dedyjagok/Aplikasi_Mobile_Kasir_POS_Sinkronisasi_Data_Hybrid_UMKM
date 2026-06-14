@@ -18,6 +18,7 @@ class RefillEntryScreen extends StatefulWidget {
 class _RefillEntryScreenState extends State<RefillEntryScreen> {
   RefillType _selectedType = RefillType.ambil;
   bool _isSaving = false;
+  int _quantity = 1;
 
   @override
   Widget build(BuildContext context) {
@@ -152,7 +153,7 @@ class _RefillEntryScreenState extends State<RefillEntryScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Harga Isi Ulang',
+                  Text('Harga per Galon',
                       style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
                   Text(
                     currency.format(currentPrice),
@@ -165,6 +166,55 @@ class _RefillEntryScreenState extends State<RefillEntryScreen> {
                 ],
               ),
             ),
+            const SizedBox(height: 16),
+
+            // ── Pilih Kuantitas ───────────────────────────
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.shade300),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Jumlah Galon', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.remove_circle_outline),
+                        onPressed: _quantity > 1 ? () => setState(() => _quantity--) : null,
+                        color: _quantity > 1 ? const Color(0xFF0097A7) : Colors.grey,
+                      ),
+                      Container(
+                        width: 40,
+                        alignment: Alignment.center,
+                        child: Text('$_quantity', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold)),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.add_circle_outline),
+                        onPressed: () => setState(() => _quantity++),
+                        color: const Color(0xFF0097A7),
+                      ),
+                    ],
+                  )
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // ── Total Estimasi ────────────────────────────
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Text('Total: ', style: GoogleFonts.poppins(fontSize: 16, color: Colors.grey.shade700)),
+                Text(
+                  currency.format(currentPrice * _quantity),
+                  style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.bold, color: const Color(0xFF00695C)),
+                ),
+              ],
+            ),
 
             const Spacer(),
 
@@ -176,13 +226,19 @@ class _RefillEntryScreenState extends State<RefillEntryScreen> {
                       setState(() => _isSaving = true);
                       await context
                           .read<RefillProvider>()
-                          .addRecord(_selectedType, currentPrice);
-                      setState(() => _isSaving = false);
+                          .addRecords(_selectedType, currentPrice, _quantity);
+                      
+                      final int totalSaved = currentPrice * _quantity;
+                      
+                      setState(() {
+                        _isSaving = false;
+                        _quantity = 1; // Reset kembali ke 1
+                      });
                       if (mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                           content: Text(
-                            '✅ Refill ${_selectedType.label} dicatat — '
-                            '${currency.format(currentPrice)}',
+                            '✅ ${_quantity}x Refill ${_selectedType.label} dicatat — '
+                            '${currency.format(totalSaved)}',
                           ),
                           backgroundColor: const Color(0xFF00695C),
                         ));

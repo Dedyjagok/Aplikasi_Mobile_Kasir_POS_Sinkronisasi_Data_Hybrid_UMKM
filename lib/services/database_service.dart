@@ -293,6 +293,15 @@ class DatabaseService {
     return rows.map(RefillRecord.fromSqliteMap).toList();
   }
 
+  Future<void> deleteRefillRecord(String id) async {
+    final db = await database;
+    await db.delete(
+      'refill_records',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
   Future<void> markRefillRecordSynced(String id) async {
     final db = await database;
     await db.update('refill_records', {'is_synced': 1},

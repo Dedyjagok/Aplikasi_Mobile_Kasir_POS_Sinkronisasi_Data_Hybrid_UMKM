@@ -18,6 +18,7 @@ class _RefillMonthlyScreenState extends State<RefillMonthlyScreen> {
   DateTime _month = DateTime.now();
   DateTime? _selectedDay;
   String _selectedFilter = 'Semua';
+  final Map<String, ExpansionTileController> _controllers = {};
 
   @override
   void initState() {
@@ -266,10 +267,25 @@ class _RefillMonthlyScreenState extends State<RefillMonthlyScreen> {
                       ),
                     )
                   else
-                    ...filteredRecords.map((r) => Card(
-                          margin: const EdgeInsets.only(bottom: 6),
-                          child: ListTile(
-                            dense: true,
+                    ...filteredRecords.map((r) {
+                      _controllers.putIfAbsent(r.id, () => ExpansionTileController());
+
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 6),
+                        child: Theme(
+                          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                          child: ExpansionTile(
+                            controller: _controllers[r.id],
+                            onExpansionChanged: (expanded) {
+                              if (expanded) {
+                                for (final entry in _controllers.entries) {
+                                  if (entry.key != r.id && entry.value.isExpanded) {
+                                    entry.value.collapse();
+                                  }
+                                }
+                              }
+                            },
+                            tilePadding: const EdgeInsets.symmetric(horizontal: 16),
                             leading: Icon(
                               r.type.value == 'antar'
                                   ? Icons.delivery_dining
@@ -293,8 +309,60 @@ class _RefillMonthlyScreenState extends State<RefillMonthlyScreen> {
                                   fontWeight: FontWeight.w600,
                                   fontSize: 13),
                             ),
+                            children: [
+                              Container(
+                                color: Colors.grey.shade50,
+                                padding: const EdgeInsets.all(16),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    OutlinedButton.icon(
+                                      onPressed: () {
+                                        showDialog(
+                                          context: context,
+                                          builder: (ctx) => AlertDialog(
+                                            title: const Text('Hapus Riwayat?'),
+                                            content: const Text(
+                                                'Anda yakin ingin menghapus data isi ulang ini? Aksi ini akan mengurangi total pendapatan bulanan.'),
+                                            actions: [
+                                              TextButton(
+                                                  onPressed: () => Navigator.pop(ctx),
+                                                  child: const Text('Batal')),
+                                              ElevatedButton(
+                                                style: ElevatedButton.styleFrom(
+                                                    backgroundColor: Colors.red),
+                                                onPressed: () {
+                                                  context
+                                                      .read<RefillProvider>()
+                                                      .deleteRecord(r.id);
+                                                  Navigator.pop(ctx);
+                                                  ScaffoldMessenger.of(context).showSnackBar(
+                                                    const SnackBar(
+                                                      content: Text('Riwayat berhasil dihapus'),
+                                                      backgroundColor: Colors.red,
+                                                    )
+                                                  );
+                                                },
+                                                child: const Text('Hapus', style: TextStyle(color: Colors.white)),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      },
+                                      icon: const Icon(Icons.delete_outline, color: Colors.red),
+                                      label: const Text('Hapus Riwayat', style: TextStyle(color: Colors.red)),
+                                      style: OutlinedButton.styleFrom(
+                                        side: const BorderSide(color: Colors.red),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            ],
                           ),
-                        )),
+                        ),
+                      );
+                    }),
                 ],
               ),
             ),

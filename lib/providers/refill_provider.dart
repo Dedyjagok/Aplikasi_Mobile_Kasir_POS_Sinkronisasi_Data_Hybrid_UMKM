@@ -61,25 +61,44 @@ class RefillProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Tambah satu record refill baru.
-  Future<void> addRecord(RefillType type, int price) async {
-    final record = RefillRecord(
-      id: const Uuid().v4(),
-      userId: FirebaseAuth.instance.currentUser?.uid ?? '',
-      timestamp: DateTime.now(),
-      type: type,
-      price: price,
-    );
-    await _localDb.insertRefillRecord(record);
-    // Sinkronisasi ke cloud (fire and forget) agar UI tidak ngehang saat offline
-    _cloudDb.addRefillRecord(record).then((_) {
-      _localDb.markRefillRecordSynced(record.id);
-      record.isSynced = true;
-      notifyListeners();
-    }).catchError((_) {});
+  /// Tambah record refill baru sekaligus sesuai kuantitas.
+  Future<void> addRecords(RefillType type, int price, int qty) async {
+    final newRecords = <RefillRecord>[];
     
-    _todayRecords.insert(0, record);
+    for (int i = 0; i < qty; i++) {
+      final record = RefillRecord(
+        id: const Uuid().v4(),
+        userId: FirebaseAuth.instance.currentUser?.uid ?? '',
+        timestamp: DateTime.now(),
+        type: type,
+        price: price,
+      );
+      newRecords.add(record);
+      await _localDb.insertRefillRecord(record);
+      // Sinkronisasi ke cloud (fire and forget) agar UI tidak ngehang saat offline
+      _cloudDb.addRefillRecord(record).then((_) {
+        _localDb.markRefillRecordSynced(record.id);
+        record.isSynced = true;
+        notifyListeners();
+      }).catchError((_) {});
+    }
+    
+    _todayRecords.insertAll(0, newRecords);
     notifyListeners();
+  }
+
+  /// Menghapus satu record refill
+  Future<void> deleteRecord(String id) async {
+    // Optimistic UI update
+    _todayRecords.removeWhere((r) => r.id == id);
+    _monthRecords.removeWhere((r) => r.id == id);
+    notifyListeners();
+
+    // Hapus di SQLite
+    await _localDb.deleteRefillRecord(id);
+
+    // Hapus di Firestore
+    _cloudDb.deleteRefillRecord(id).catchError((_) {});
   }
 
   /// Hitung rekap bulanan dari data yang sudah dimuat.

@@ -153,6 +153,10 @@ class FirestoreService {
     await batch.commit();
   }
 
+  Future<void> deleteRefillRecord(String id) async {
+    await _refillRecords.doc(id).delete();
+  }
+
   Future<List<RefillRecord>> getRefillRecordsByMonth(
       int year, int month) async {
     final start = DateTime(year, month);

@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:blue_thermal_printer/blue_thermal_printer.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../models/app_settings_model.dart';
 import '../../models/pos_transaction_model.dart';
 import '../../services/printer_service.dart';
+import '../../widgets/tutorial_overlay.dart';
 
 class ReceiptScreen extends StatefulWidget {
   final PosTransaction transaction;
@@ -31,10 +33,75 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
   bool _isPrinting = false;
   bool _isConnected = false;
 
+  bool _showTutorial = false;
+  String _catalogStage = 'none';
+
+  final _keyInfoCard = GlobalKey();
+  final _keyPrintButton = GlobalKey();
+
   @override
   void initState() {
     super.initState();
     _initBluetooth();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkTutorial();
+    });
+  }
+
+  Future<void> _checkTutorial() async {
+    final prefs = await SharedPreferences.getInstance();
+    final stage = prefs.getString('tutorial_catalog_stage') ?? 'none';
+    if (stage == 'receipt_intro' && mounted) {
+      setState(() {
+        _showTutorial = true;
+        _catalogStage = stage;
+      });
+    } else {
+      if (mounted) {
+        setState(() {
+          _showTutorial = false;
+          _catalogStage = 'none';
+        });
+      }
+    }
+  }
+
+  List<TutorialStep> _buildReceiptSteps() {
+    return [
+      const TutorialStep(
+        message: 'Transaksi berhasil diproses! \n\nIni adalah halaman Struk Penjualan. Di sini Anda bisa melihat rincian barang, total belanja, dan kembalian.',
+        characterPosition: 'left',
+      ),
+      TutorialStep(
+        message: 'Pastikan printer Bluetooth Anda menyala dan sudah dipairing agar statusnya terhubung.',
+        targetKey: _keyInfoCard,
+        characterPosition: 'left',
+        verticalPosition: 'bottom',
+      ),
+      TutorialStep(
+        message: 'Terakhir, Anda dapat mencetak struk fisik dengan mengetuk tombol "Cetak Struk" ini.',
+        targetKey: _keyPrintButton,
+        characterPosition: 'left',
+        verticalPosition: 'top',
+      ),
+    ];
+  }
+
+  Future<void> _goBack() async {
+    final prefs = await SharedPreferences.getInstance();
+    final stage = prefs.getString('tutorial_catalog_stage') ?? 'none';
+    if (stage == 'receipt_intro') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Silakan selesaikan tutorial terlebih dahulu, atau lewati di balon petunjuk.'),
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+    if (mounted) {
+      Navigator.pop(context);
+    }
   }
 
   Future<void> _initBluetooth() async {
@@ -194,244 +261,278 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Cetak Struk'),
-        actions: [
-          if (_isConnected)
-            IconButton(
-              icon: const Icon(Icons.bluetooth_connected),
-              onPressed: _disconnect,
-              tooltip: 'Putuskan Koneksi',
-            ),
-        ],
-      ),
-      body: Column(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        await _goBack();
+      },
+      child: Stack(
         children: [
-          Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  _buildReceiptPreview(),
-                  // Connection Status
-          Container(
-            padding: const EdgeInsets.all(16),
-            color: _isConnected
-                ? Colors.green.shade100
-                : const Color(0xFF00695C).withOpacity(0.1),
-            child: Row(
-              children: [
-                Icon(
-                  _isConnected
-                      ? Icons.bluetooth_connected
-                      : Icons.info_outline,
-                  color: _isConnected
-                      ? Colors.green.shade700
-                      : const Color(0xFF00695C),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    _isConnected
-                        ? 'Terhubung ke ${_selectedDevice?.name ?? "Printer"}'
-                        : 'Pastikan printer Bluetooth Anda menyala dan sudah dipairing (disandingkan) dengan perangkat ini',
-                    style: TextStyle(
-                      color: _isConnected
-                          ? Colors.green.shade900
-                          : const Color(0xFF00695C),
-                      fontWeight: _isConnected ? FontWeight.bold : FontWeight.normal,
-                    ),
+          Scaffold(
+            appBar: AppBar(
+              title: const Text('Cetak Struk'),
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: _goBack,
+              ),
+              actions: [
+                if (_isConnected)
+                  IconButton(
+                    icon: const Icon(Icons.bluetooth_connected),
+                    onPressed: _disconnect,
+                    tooltip: 'Putuskan Koneksi',
                   ),
-                ),
               ],
             ),
-          ),
-
-          // Refresh Button
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: _isScanning ? null : _getBondedDevices,
-                icon: _isScanning
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.refresh),
-                label: Text(_isScanning ? 'Mencari...' : 'Segarkan Daftar Perangkat'),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-              ),
-            ),
-          ),
-
-          // Devices List
-          _devices.isEmpty
-              ? Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 32),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                        Icon(
-                          Icons.bluetooth_searching,
-                          size: 80,
-                          color: Colors.grey[400],
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          _isScanning
-                              ? 'Mencari printer Bluetooth...'
-                              : 'Tidak ada printer yang ditemukan',
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        if (!_isScanning) ...[
-                          const SizedBox(height: 8),
-                          Text(
-                            'Silakan pairing printer Anda di Pengaturan Bluetooth HP/Tablet terlebih dahulu',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey[500],
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ],
-                    ),
-                  )
-                : ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: _devices.length,
-                    itemBuilder: (context, index) {
-                      final device = _devices[index];
-                      final isSelected = _selectedDevice?.address == device.address;
-
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        color: isSelected ? const Color(0xFFE0F2F1) : Colors.white,
-                        child: ListTile(
-                          leading: Icon(
-                            Icons.print,
-                            color: isSelected ? const Color(0xFF00695C) : Colors.grey,
-                          ),
-                          title: Text(
-                            device.name ?? 'Perangkat Tidak Dikenal',
-                            style: TextStyle(
-                              fontWeight: isSelected
-                                  ? FontWeight.bold
-                                  : FontWeight.normal,
-                            ),
-                          ),
-                          subtitle: Text(device.address ?? ''),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
+            body: Column(
+              children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        _buildReceiptPreview(),
+                        // Connection Status
+                        Container(
+                          key: _keyInfoCard,
+                          padding: const EdgeInsets.all(16),
+                          color: _isConnected
+                              ? Colors.green.shade100
+                              : const Color(0xFF00695C).withOpacity(0.1),
+                          child: Row(
                             children: [
-                              if (isSelected && _isConnected)
-                                const Icon(
-                                  Icons.check_circle,
-                                  color: Colors.green,
+                              Icon(
+                                _isConnected
+                                    ? Icons.bluetooth_connected
+                                    : Icons.info_outline,
+                                color: _isConnected
+                                    ? Colors.green.shade700
+                                    : const Color(0xFF00695C),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  _isConnected
+                                      ? 'Terhubung ke ${_selectedDevice?.name ?? "Printer"}'
+                                      : 'Pastikan printer Bluetooth Anda menyala dan sudah dipairing (disandingkan) dengan perangkat ini',
+                                  style: TextStyle(
+                                    color: _isConnected
+                                        ? Colors.green.shade900
+                                        : const Color(0xFF00695C),
+                                    fontWeight: _isConnected ? FontWeight.bold : FontWeight.normal,
+                                  ),
                                 ),
-                              if (isSelected && !_isConnected)
-                                const Icon(
-                                  Icons.radio_button_checked,
-                                  color: Color(0xFF00695C),
-                                ),
+                              ),
                             ],
                           ),
-                          onTap: () {
-                            setState(() {
-                              _selectedDevice = device;
-                            });
-                          },
                         ),
-                      );
-                    },
+
+                        // Refresh Button
+                        Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: _isScanning ? null : _getBondedDevices,
+                              icon: _isScanning
+                                  ? const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                    )
+                                  : const Icon(Icons.refresh),
+                              label: Text(_isScanning ? 'Mencari...' : 'Segarkan Daftar Perangkat'),
+                              style: ElevatedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        // Devices List
+                        _devices.isEmpty
+                            ? Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 32),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                      Icon(
+                                        Icons.bluetooth_searching,
+                                        size: 80,
+                                        color: Colors.grey[400],
+                                      ),
+                                      const SizedBox(height: 16),
+                                      Text(
+                                        _isScanning
+                                            ? 'Mencari printer Bluetooth...'
+                                            : 'Tidak ada printer yang ditemukan',
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          color: Colors.grey[600],
+                                        ),
+                                      ),
+                                      if (!_isScanning) ...[
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          'Silakan pairing printer Anda di Pengaturan Bluetooth HP/Tablet terlebih dahulu',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: Colors.grey[500],
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                )
+                            : ListView.builder(
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                itemCount: _devices.length,
+                                itemBuilder: (context, index) {
+                                  final device = _devices[index];
+                                  final isSelected = _selectedDevice?.address == device.address;
+
+                                  return Card(
+                                    margin: const EdgeInsets.only(bottom: 8),
+                                    color: isSelected ? const Color(0xFFE0F2F1) : Colors.white,
+                                    child: ListTile(
+                                      leading: Icon(
+                                        Icons.print,
+                                        color: isSelected ? const Color(0xFF00695C) : Colors.grey,
+                                      ),
+                                      title: Text(
+                                        device.name ?? 'Perangkat Tidak Dikenal',
+                                        style: TextStyle(
+                                          fontWeight: isSelected
+                                              ? FontWeight.bold
+                                              : FontWeight.normal,
+                                        ),
+                                      ),
+                                      subtitle: Text(device.address ?? ''),
+                                      trailing: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          if (isSelected && _isConnected)
+                                            const Icon(
+                                              Icons.check_circle,
+                                              color: Colors.green,
+                                            ),
+                                          if (isSelected && !_isConnected)
+                                            const Icon(
+                                              Icons.radio_button_checked,
+                                              color: Color(0xFF00695C),
+                                            ),
+                                        ],
+                                      ),
+                                      onTap: () {
+                                        setState(() {
+                                          _selectedDevice = device;
+                                        });
+                                      },
+                                    ),
+                                  );
+                                },
+                              ),
+                      ],
+                    ),
                   ),
-                ],
+                ),
+
+                // Action Buttons
+                Container(
+                  padding: EdgeInsets.only(
+                    left: 16,
+                    right: 16,
+                    top: 16,
+                    bottom: 16 + MediaQuery.of(context).padding.bottom,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, -5),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      if (!_isConnected && _selectedDevice != null)
+                        SizedBox(
+                          width: double.infinity,
+                          height: 48,
+                          child: OutlinedButton.icon(
+                            onPressed: _connectToDevice,
+                            icon: const Icon(Icons.bluetooth),
+                            label: const Text('Sambungkan ke Printer'),
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: Color(0xFF00695C)),
+                              foregroundColor: const Color(0xFF00695C),
+                            ),
+                          ),
+                        ),
+                      if (!_isConnected && _selectedDevice != null)
+                        const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 56,
+                        child: ElevatedButton.icon(
+                          key: _keyPrintButton,
+                          onPressed: (_selectedDevice != null && !_isPrinting)
+                              ? _printReceipt
+                              : null,
+                          icon: _isPrinting
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                  ),
+                                )
+                              : const Icon(Icons.print),
+                          label: Text(
+                            _isPrinting ? 'Mencetak...' : 'Cetak Struk',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF00695C),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (_showTutorial)
+            Positioned.fill(
+              child: TutorialOverlay(
+                tutorialKey: 'receipt_screen',
+                steps: _buildReceiptSteps(),
+                onComplete: () async {
+                  setState(() => _showTutorial = false);
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.setString('tutorial_catalog_stage', 'completed');
+                },
+                onSkip: () async {
+                  setState(() => _showTutorial = false);
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.setString('tutorial_catalog_stage', 'completed');
+                },
               ),
             ),
-          ),
-
-          // Action Buttons
-          Container(
-            padding: EdgeInsets.only(
-              left: 16,
-              right: 16,
-              top: 16,
-              bottom: 16 + MediaQuery.of(context).padding.bottom,
-            ),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, -5),
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                if (!_isConnected && _selectedDevice != null)
-                  SizedBox(
-                    width: double.infinity,
-                    height: 48,
-                    child: OutlinedButton.icon(
-                      onPressed: _connectToDevice,
-                      icon: const Icon(Icons.bluetooth),
-                      label: const Text('Sambungkan ke Printer'),
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Color(0xFF00695C)),
-                        foregroundColor: const Color(0xFF00695C),
-                      ),
-                    ),
-                  ),
-                if (!_isConnected && _selectedDevice != null)
-                  const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  height: 56,
-                  child: ElevatedButton.icon(
-                    onPressed: (_selectedDevice != null && !_isPrinting)
-                        ? _printReceipt
-                        : null,
-                    icon: _isPrinting
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                            ),
-                          )
-                        : const Icon(Icons.print),
-                    label: Text(
-                      _isPrinting ? 'Mencetak...' : 'Cetak Struk',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF00695C),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
         ],
       ),
     );

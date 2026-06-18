@@ -27,7 +27,7 @@ class _RefillMonthlyScreenState extends State<RefillMonthlyScreen> {
   }
 
   void _load() {
-    context.read<RefillProvider>().loadMonthRecords(_month.year, _month.month);
+    context.read<RefillProvider>().loadMonthRecords(_month.year, _month.month, forceCloud: true);
   }
 
   void _prevMonth() {

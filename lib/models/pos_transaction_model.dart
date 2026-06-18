@@ -102,6 +102,7 @@ class PosTransaction {
       );
 
   Map<String, dynamic> toFirestoreMap() => {
+        'user_id': userId,
         'timestamp': Timestamp.fromDate(timestamp),
         'total_amount': totalAmount,
         'cash_received': cashReceived,

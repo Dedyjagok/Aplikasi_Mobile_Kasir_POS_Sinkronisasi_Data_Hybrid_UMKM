@@ -56,6 +56,7 @@ class Product {
   // ── Firestore ───────────────────────────────────────────
   // ── Firestore ───────────────────────────────────────────
   Map<String, dynamic> toFirestoreMap() => {
+        'user_id': userId,
         'name': name,
         'category_id': categoryId,
         'cost_price': costPrice,

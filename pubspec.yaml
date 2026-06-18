@@ -38,6 +38,7 @@ dependencies:
   purchases_ui_flutter: ^10.1.0
   permission_handler: ^12.0.3
   fl_chart: ^1.2.0
+  shared_preferences: ^2.3.4
 
 dev_dependencies:
   flutter_test:
@@ -47,8 +48,8 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
-  # To add assets to your application, add an assets section, like this:
-  # assets:
+  assets:
+    - assets/images/RO_man_TheGuide.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

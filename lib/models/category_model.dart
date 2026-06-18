@@ -32,6 +32,7 @@ class CategoryModel {
 
   // ── Firestore ───────────────────────────────────────────
   Map<String, dynamic> toFirestoreMap() => {
+        'user_id': userId,
         'name': name,
         'updated_at': updatedAt != null ? Timestamp.fromDate(updatedAt!) : null,
       };
@@ -40,7 +41,7 @@ class CategoryModel {
     final data = doc.data() as Map<String, dynamic>? ?? {};
     return CategoryModel(
       id: doc.id,
-      userId: '', // Diisi nanti saat sync jika perlu, biasanya ditaruh di path doc
+      userId: data['user_id'] as String? ?? '',
       name: data['name'] as String? ?? '',
       updatedAt: data['updated_at'] != null
           ? (data['updated_at'] as Timestamp).toDate()

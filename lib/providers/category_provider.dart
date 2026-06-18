@@ -15,11 +15,19 @@ class CategoryProvider extends ChangeNotifier {
   List<CategoryModel> get categories => _categories;
   bool get isLoading => _isLoading;
 
-  Future<void> loadCategories() async {
+  Future<void> loadCategories({bool forceCloud = false}) async {
     _isLoading = true;
     notifyListeners();
 
     try {
+      if (forceCloud) {
+        try {
+          final cloudCategories = await _firestore.getAllCategories();
+          for (final c in cloudCategories) {
+            await _db.insertCategory(c);
+          }
+        } catch (_) {}
+      }
       _categories = await _db.getAllCategories();
     } catch (e) {
       debugPrint('Error loading categories: $e');

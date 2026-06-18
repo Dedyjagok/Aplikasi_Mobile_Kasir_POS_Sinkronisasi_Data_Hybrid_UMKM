@@ -318,15 +318,6 @@ class DatabaseService {
     if (rows.isEmpty) return const AppSettings();
     final map = {for (final r in rows) r['key'] as String: r['value'] as String};
     
-    // Parse JSON safely for list
-    List<String>? categories;
-    if (map['product_categories'] != null) {
-      try {
-        final List<dynamic> decoded = jsonDecode(map['product_categories']!);
-        categories = decoded.map((e) => e.toString()).toList();
-      } catch (_) {}
-    }
-
     return AppSettings.fromMap({
       'store_name': map['store_name'],
       'store_address': map['store_address'],
@@ -337,7 +328,6 @@ class DatabaseService {
       'low_stock_threshold': int.tryParse(map['low_stock_threshold'] ?? '10'),
       'currency_symbol': map['currency_symbol'],
       'owner_pin': map['owner_pin'],
-      'product_categories': categories,
     });
   }
 

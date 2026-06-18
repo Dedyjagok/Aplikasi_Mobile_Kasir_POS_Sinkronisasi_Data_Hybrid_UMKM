@@ -188,16 +188,24 @@
 
     ```text
     Firestore/
-    └── users/
-        └── {uid} / (ID Pemilik Toko)
-            ├── profile: { name, isPremium }
-            ├── products/
-            │   └── {product_id}
-            │       ├── name, category, cost_price, sell_price, stock, dll
-            └── pos_transactions/
-                └── {transaction_id}
-                    ├── timestamp, total_amount, cash_received, dll
-                    └── items: [ { product_id, name, qty, price, subtotal } ]
+    ├── users/
+    │   └── {uid} (ID Pemilik Toko)
+    │       └── profile: { name, email, isPremium, dll }
+    ├── product_categories/
+    │   └── {category_id}
+    │       ├── user_id: {uid}
+    │       ├── name: "Snack"
+    │       └── updated_at: Timestamp
+    ├── products/
+    │   └── {product_id}
+    │       ├── user_id: {uid}
+    │       ├── name, category_id, cost_price, sell_price, stock, dll
+    │       └── updated_at: Timestamp
+    ├── pos_transactions/
+    │   └── {transaction_id}
+    │       ├── user_id: {uid}
+    │       ├── timestamp, total_amount, cash_received, dll
+    │       └── items: [ { product_id, product_name, qty, unit_price, subtotal } ]
     ```
 
     ### Format Struk Thermal 58mm
@@ -283,18 +291,11 @@
     id          TEXT PRIMARY KEY,
     user_id     TEXT NOT NULL,
     timestamp   TEXT NOT NULL,       -- Tanggal & waktu isi ulang
-    volume_liter INTEGER NOT NULL,   -- Volume dalam liter (5, 10, 15, 19)
+    type        TEXT NOT NULL,       -- "antar" atau "ambil"
     price       INTEGER NOT NULL,    -- Harga saat transaksi
-    note        TEXT,                -- Catatan opsional (nama pelanggan, dll)
     is_synced   INTEGER DEFAULT 0    -- 0=belum sinkron, 1=sudah sinkron
     );
 
-    -- Konfigurasi Harga Refill (Disinkronkan dari Firestore)
-    CREATE TABLE refill_pricing (
-    volume_liter INTEGER PRIMARY KEY,
-    price        INTEGER NOT NULL,
-    label        TEXT               -- Contoh: "Galon 19L"
-    );
     ```
 
     ### Struktur Collection Firestore — Modul Refill
@@ -303,17 +304,11 @@
     Firestore/
     ├── refill_records/
     │   └── {record_id}
+    │       ├── user_id: {uid}
     │       ├── timestamp: Timestamp
-    │       ├── volume_liter: 19
+    │       ├── type: "antar" / "ambil"
     │       ├── price: 15000
-    │       ├── note: "Pak Budi"
     │       └── is_synced: true
-    │
-    └── refill_pricing/
-        └── {volume}         -- Contoh document ID: "19"
-            ├── volume_liter: 19
-            ├── price: 15000
-            └── label: "Galon 19L"
     ```
 
     ### Layar Rekap Bulanan
@@ -544,3 +539,146 @@
     4. Cetak untuk Refill tidak perlu
     5. Firebase Project sudah benar service googlenya
     6. Low Stock Threshold angka minimum kasih saja default 10
+
+    ---
+
+    ## 11. Fitur Tutorial Interaktif (In-App Onboarding)
+
+    ### Deskripsi
+    Fitur panduan interaktif berbasis karakter maskot **RO Man** (`assets/images/RO_man_TheGuide.png`) yang muncul saat pengguna pertama kali membuka aplikasi. Tutorial memperkenalkan setiap elemen UI pada layar `HomeScreen` dan kemudian mengarahkan pengguna ke halaman **Katalog Produk** (`ProductListScreen`).
+
+    ### Mekanisme Kerja
+
+    ```mermaid
+    flowchart TD
+        A["User masuk HomeScreen"] --> B{"Tutorial sudah\npernah ditampilkan?"}
+        B -- "Belum" --> C["Tampilkan TutorialOverlay"]
+        C --> D["Langkah 1: Perkenalan RO Man"]
+        D --> E["Langkah 2-7: Highlight setiap\nelemen UI Dashboard"]
+        E --> F["Langkah 8: Pesan penutup"]
+        F --> G["Navigasi ke ProductListScreen"]
+        G --> H["Simpan flag ke SharedPreferences"]
+        B -- "Sudah" --> I["Langsung ke Dashboard biasa"]
+        
+        style C fill:#0097A7,color:#fff
+        style G fill:#00695C,color:#fff
+    ```
+
+    ### Fitur Utama
+    - **Animasi Typewriter**: Teks muncul karakter per karakter layaknya sedang diketik
+    - **Tap to Speed Up**: Ketuk layar untuk mempercepat animasi teks (35ms → 8ms per karakter)
+    - **Highlight Pulse**: Area target di-highlight dengan efek glow berdenyut berwarna cyan
+    - **Skip Button**: Tombol untuk melewati seluruh tutorial kapan saja
+    - **Karakter Animasi**: RO Man muncul dari samping layar dengan efek `elasticOut`
+    - **Speech Bubble**: Balon teks muncul dengan animasi `scaleTransition`
+    - **Persistent State**: Status tutorial disimpan di `SharedPreferences` agar hanya tampil sekali
+    - **Reusable Widget**: `TutorialOverlay` dapat digunakan di layar manapun dengan langkah berbeda
+
+    ### Alur Tutorial HomeScreen (8 Langkah)
+
+    | No. | Target Highlight | Pesan |
+    | 1 | — (Perkenalan) | Sapaan RO Man dan instruksi interaksi |
+    | 2 | Chip "Stok Menipis" | Penjelasan ringkasan stok |
+    | 3 | Chip "Refill Hari Ini" | Penjelasan ringkasan refill |
+    | 4 | Kartu Kasir Produk | Penjelasan modul POS |
+    | 5 | Kartu Refill Air RO | Penjelasan modul Refill |
+    | 6 | Menu Katalog Produk | Penjelasan manajemen produk |
+    | 7 | Menu Laporan POS | Penjelasan menu laporan & statistik |
+    | 8 | — (Penutup) | Pesan selesai dan navigasi ke Katalog |
+
+    ### Dependensi Tambahan
+
+    | Library | Versi | Fungsi |
+    |---------|-------|--------|
+    | `shared_preferences` | `^2.3.4` | Menyimpan status tutorial (sudah/belum ditampilkan) |
+
+    ### File Terkait
+
+    | File | Deskripsi |
+    |------|-----------|
+    | `lib/screens/products/product_category_screen.dart` | Integrasi tutorial halaman kategori produk & intersepsi PopScope |
+    | `assets/images/RO_man_TheGuide.png` | Aset gambar karakter maskot RO Man |
+    | `pubspec.yaml` | Registrasi aset gambar dan dependensi `shared_preferences` |
+
+    ### Alur Tutorial Modul Katalog & Kategori (Multi-Screen Onboarding)
+
+    Setelah tutorial `HomeScreen` selesai, alur berpindah ke halaman **Katalog Produk** untuk mengajarkan manajemen produk dan kategori secara interaktif dengan sistem navigasi otomatis penuh:
+
+    ```mermaid
+    flowchart TD
+        Start["Selesai Home Tutorial"] --> NavList["Navigasi ke ProductListScreen\nstage = 'list_intro'"]
+        NavList --> ShowListIntro["Tampilkan pengenalan list\nHighlight Row Cari/Filter"]
+        ShowListIntro --> HighlightAdd["Highlight Tombol Tambah (+)\n(Interactive Clickable)"]
+        HighlightAdd -- "Ketuk Selesai" --> NavForm["Buka ProductFormScreen\nstage = 'form_intro'"]
+        NavForm --> ShowFormIntro["Tampilkan pengenalan form"]
+        ShowFormIntro -- "Ketuk Selesai" --> NavCat["Navigasi ke ProductCategoryScreen\nstage = 'category_intro'"]
+        NavCat --> ShowCatIntro["Tampilkan penjelasan Kategori\nHighlight FAB '+ Kategori'"]
+        ShowCatIntro -- "User mengklik FAB & Simpan Kategori" --> BackForm["Kembali ke ProductFormScreen\nstage = 'form_add_product'"]
+        BackForm --> GuideAddProduct["Panduan mengisi produk contoh\nHighlight tombol Simpan"]
+        GuideAddProduct -- "User mengklik Simpan" --> BackListEdit["Kembali ke ProductListScreen\nstage = 'list_highlight_edit'"]
+        BackListEdit --> HighlightEdit["Highlight Tombol Edit\n(Pesan penutup tutorial)"]
+        HighlightEdit -- "Tutorial Selesai" --> Finish["Update stage = 'completed'"]
+
+        style HighlightAdd fill:#0097A7,color:#fff
+        style NavForm fill:#00695C,color:#fff
+        style NavCat fill:#00695C,color:#fff
+        style BackForm fill:#00695C,color:#fff
+        style GuideAddProduct fill:#0097A7,color:#fff
+        style HighlightEdit fill:#0097A7,color:#fff
+    ```
+
+    ### Detail Implementasi Teknis
+
+    1. **State / Stage Key (`tutorial_catalog_stage`)**:
+       - Menggunakan key string di `SharedPreferences` untuk menentukan stage aktif secara global sehingga layar tujuan mengetahui langkah mana yang harus ditampilkan.
+    2. **Otomatis Direct / Navigasi Terpadu & Validasi Kategori**:
+       - **Katalog ke Form**: Setelah membaca penjelasan awal katalog produk dan disorot tombol "+" (Tambah) di kanan atas pada `ProductListScreen`, ketukan "Selesai" di `TutorialOverlay` akan otomatis membuka `ProductFormScreen` (memperbarui stage ke `'form_intro'`).
+       - **Form ke Kategori**: Setelah perkenalan form, ketukan "Selesai" di `TutorialOverlay` akan otomatis membuka `ProductCategoryScreen` (memperbarui stage ke `'category_intro'`).
+       - **Validasi Kategori Kosong saat Back**: Di `ProductCategoryScreen`, ketika pengguna berada dalam tahap tutorial (`stage == 'category_intro'`) dan mencoba kembali (lewat tombol Back AppBar maupun Android Back/PopScope), sistem akan memvalidasi apakah database lokal memiliki minimal 1 kategori. Jika kosong, navigasi diblokir dan ditampilkan `SnackBar` instruksi. Aksi kembali hanya diperbolehkan setelah minimal 1 kategori ditambahkan atau jika pengguna melewati tutorial dengan mengetuk "Skip Tutorial".
+       - **Kategori Kembali ke Form**: Saat berada di halaman `ProductCategoryScreen`, pengisian kategori baru dan penyimpanan berhasil via tombol **Simpan** (atau ketika menekan kembali saat kategori sudah ada) akan mengubah stage ke `'form_add_product'` dan melakukan `Navigator.pop(context, 'go_to_form')` kembali ke `ProductFormScreen`.
+       - **Skip Tutorial**: Jika pengguna mengetuk "Skip Tutorial" pada `ProductCategoryScreen`, callback `onSkip` dijalankan untuk memperbarui status stage ke `'completed'` secara permanen dan segera mengembalikan pengguna ke `ProductListScreen` tanpa memaksa validasi data kategori.
+    3. **Interactive Pass-Through (`RenderHoleHitTest` / `HoleHitTestWidget`)**:
+       - Agar pengguna dapat mengklik tombol yang sedang di-highlight (misalnya tombol FAB '+ Kategori' atau tombol 'Simpan/Edit') tanpa terhalang overlay modal penuh, dibuat custom render object `RenderHoleHitTest` yang mewarisi `RenderProxyBox`.
+       - Jika koordinat event klik berada di dalam area `holeRect` (kotak target yang diperbesar dengan padding), `hitTest` mengembalikan nilai `false`. Flutter akan meneruskan event input tersebut ke widget di bawah overlay secara otomatis.
+    4. **Pencegahan Error Layout Query di Build Phase**:
+       - Untuk mencegah crash `SchedulerBinding.handleDrawFrame` yang disebabkan query posisi target widget (`_getTargetRect()`) saat layout sedang dibuat, kalkulasi posisi dibungkus dengan `WidgetsBinding.instance.addPostFrameCallback`.
+       - Di halaman `ProductCategoryScreen`, widget `PopScope` dan tombol back di AppBar diintersepsi untuk memicu validasi kategori sebelum navigasi diizinkan.
+
+## Perbaikan Bug Onboarding / Tutorial Katalog Produk (15 Juni 2026)
+
+- **Masalah**: Setelah menambah kategori dan menyimpan produk baru, saat kembali ke `ProductListScreen`, tutorial diulang dari awal (welcome intro) bukan diselesaikan dengan menyorot (highlight) tombol edit pada kartu produk baru.
+- **Penyebab**:
+  1. Pada `ProductFormScreen`, callback `onComplete` dari `TutorialOverlay` untuk stage `form_add_product` secara prematur memperbarui `tutorial_catalog_stage` menjadi `'completed'` sebelum tombol "Tambah Produk" (`_save`) ditekan. Akibatnya, `_save()` tidak dapat mengubah status stage menjadi `'list_highlight_edit'`.
+  2. Menekan tombol "+" secara manual di `ProductListScreen` (AppBar / empty state) membuka `ProductFormScreen` secara langsung tanpa melalui `ProductCategoryScreen` jika stage adalah `'list_intro'`.
+- **Solusi/Perbaikan**:
+  1. Di `ProductFormScreen`, `onComplete` untuk `form_add_product` tidak lagi menimpa stage ke `'completed'` secara prematur, sehingga stage tetap `'form_add_product'`. Ketika tombol `_keySaveButton` ditekan dan `_save()` selesai, stage diperbarui dengan benar menjadi `'list_highlight_edit'`.
+  2. Di `ProductFormScreen`, ditambahkan handler `onComplete` untuk `form_intro` agar navigasi otomatis ke `ProductCategoryScreen` berjalan semestinya.
+  3. Di `ProductListScreen`, event klik pada tombol "+" (AppBar) maupun tombol empty state "Tambah Produk" di-redirect ke `ProductCategoryScreen` (mengubah status ke `'category_intro'`) agar alur tutorial tetap utuh dan konsisten.
+  4. Menambahkan callback `onSkip` pada `TutorialOverlay` di `ProductListScreen` dan `ProductFormScreen` agar ketika pengguna membatalkan/melewati petunjuk, status stage langsung diset ke `'completed'`.
+  5. **Pop-with-Result (Penyelesaian Sinkronisasi Navigasi)**: Menggantikan navigasi `pushReplacement` pada `ProductCategoryScreen` dengan `Navigator.pop(context, 'go_to_form')` ketika kategori berhasil dibuat. Di `ProductListScreen`, pemanggilan `Navigator.push(ProductCategoryScreen)` menangkap result ini. Jika result bernilai `'go_to_form'`, maka `ProductListScreen` akan segera melakukan `push` ke `ProductFormScreen`. Hal ini menjamin bahwa rute aslinya tidak langsung selesai dan status tutorial diperbarui secara tepat waktu setelah form produk ditutup/disimpan.
+  6. **Intersepsi Back Button di ProductFormScreen**: Membungkus `ProductFormScreen` dengan `PopScope` dan mengimplementasikan leading `IconButton` yang memicu `_goBack()`. Navigasi kembali diblokir dan menampilkan `SnackBar` peringatan ketika user berada dalam tahapan tutorial (`form_intro` atau `form_add_product`) kecuali jika user menekan "Skip Tutorial" (yang merubah status stage ke `'completed'` sebelum memicu pop).
+
+- **Perbaikan Loop Tutorial via Tombol Back di ProductFormScreen (15 Juni 2026)**:
+  - **Masalah**: Pengguna dapat menutup/menyelesaikan overlay petunjuk pada langkah interaktif (seperti tombol "+ Kategori" atau "Tambah Produk") dengan menekan tombol "Selesai" pada balon dialog, sehingga overlay hilang padahal data/produk belum benar-benar ditambah. Jika overlay hilang, pengguna tidak dapat menekan "Skip Tutorial" dan jika menekan tombol back, mereka terhambat oleh `PopScope`. Jika pengguna memaksa/keluar secara tidak wajar, status tutorial tersangkut di `'form_add_product'`, menyebabkan loop tutorial intro ketika membuka halaman katalog produk.
+  - **Penyebab**: Balon dialog tutorial (`TutorialOverlay`) menampilkan tombol "Selesai"/"Lanjut" pada langkah interaktif terakhir secara default.
+  - **Solusi**:
+    1. Menambahkan opsi `showNextButton` pada `TutorialStep` (default `true`). Jika diset ke `false`, tombol "Lanjut"/"Selesai" pada balon dialog disembunyikan.
+    2. Mengeset `showNextButton: false` pada langkah interaktif `ProductCategoryScreen` (penambahan kategori) dan `ProductFormScreen` (penambahan produk). Hal ini memaksa pengguna untuk berinteraksi langsung dengan widget target (tombol "+ Kategori" atau "Tambah Produk") atau memilih tombol "Skip Tutorial" (melewati tutorial).
+    3. Memperbarui `onSkip` di `ProductFormScreen` agar tidak hanya mengubah status ke `'completed'` tetapi juga langsung memicu `Navigator.pop(context)` demi kenyamanan dan kecepatan keluar dari alur tutorial.
+
+## Implementasi Tutorial POS (Kasir) Interaktif (15 Juni 2026)
+
+- **Masalah/Kebutuhan**: Menyambung alur onboarding tutorial dari penutupan katalog produk ke simulasi transaksi POS produk kelontong secara penuh agar pengguna memahami alur kerja kasir POS dari memilih produk, memasukkan uang pembayaran, hingga mencetak struk.
+- **Penyelesaian**:
+  1. **Alur Transaksi Multi-Layar**:
+     - **ProductListScreen**: Menambahkan highlight back button ketika stage `'list_highlight_edit'` selesai, mengarahkan pengguna kembali ke Dashboard.
+     - **HomeScreen**: Mendeteksi stage `'home_pos_intro'` untuk menyorot modul **Kasir Produk**. Tapping akan mengubah stage ke `'pos_intro'` dan masuk ke kasir.
+     - **PosScreen**: Memperkenalkan kolom pencarian, list produk, dan mengarahkan pengguna memilih produk pertama. Setelah produk dipilih, tombol keranjang (FAB/AppBar) disorot untuk lanjut ke `CartScreen`.
+     - **CartScreen**: Menampilkan total belanja dan mendesak input uang tunai diterima. Menggunakan listener `onChanged` di field input uang tunai untuk otomatis mengganti stage ke `'cart_payment_active'` dan menyorot tombol "Proses Pembayaran" saat uang tunai $\ge$ total belanja.
+     - **ReceiptScreen**: Setelah transaksi POS diproses, menyajikan detail struk belanja serta menyorot info koneksi printer Bluetooth dan tombol cetak.
+  2. **Intersepsi Back Navigation (PopScope)**:
+     - Mencegah pengguna membatalkan alur tutorial secara tidak sengaja dengan mengunci navigasi kembali (`canPop: false`) di halaman POS, Keranjang, dan Struk Penjualan, kecuali dengan menekan tombol **Skip Tutorial** (yang akan menyetel stage tutorial ke `'completed'` secara permanen).
+     - Menghindari race condition pada navigasi kembali `ProductListScreen` ke `HomeScreen` dengan menggunakan `canPop: false` selama tutorial aktif dan melakukan pop manual secara asinkron setelah stage di SharedPreferences terupdate secara utuh.
+
+  3. **Perbaikan Transisi ProductListScreen ke HomeScreen (16 Juni 2026)**:
+     - Memperbaiki bug di `TutorialOverlay` di mana langkah tanpa tombol "Selesai/Lanjut" (seperti mengklik tombol back) dapat dilompati jika pengguna secara tidak sengaja mengetuk layar (memicu `_onTapScreen` yang salah membaca `showNextButton`). Perbaikan ini memastikan bahwa pada langkah interaktif tanpa tombol lanjut, overlay tutorial akan bertahan hingga pengguna benar-benar berinteraksi dengan tombol target, sehingga status navigasi tutorial (seperti `home_pos_intro`) tersimpan sempurna.

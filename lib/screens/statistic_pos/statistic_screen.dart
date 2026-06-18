@@ -40,6 +40,7 @@ class _StatisticScreenState extends State<StatisticScreen> {
     context.read<PosHistoryProvider>().loadMonthTransactions(
       _selectedDate.year,
       _selectedDate.month,
+      forceCloud: true,
     );
   }
 

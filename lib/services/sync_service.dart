@@ -14,7 +14,17 @@ class SyncService {
   SyncService(this._localDb, this._cloudDb);
 
   /// Mulai mendengarkan perubahan koneksi dan sync otomatis.
-  void startListening() {
+  void startListening() async {
+    // Jalankan sync satu kali saat pertama kali service dijalankan (app startup)
+    try {
+      final results = await Connectivity().checkConnectivity();
+      final isOnline = results.any((r) =>
+          r == ConnectivityResult.mobile || r == ConnectivityResult.wifi);
+      if (isOnline) {
+        syncAll();
+      }
+    } catch (_) {}
+
     _connectivitySub = Connectivity()
         .onConnectivityChanged
         .listen((List<ConnectivityResult> results) {
@@ -34,9 +44,33 @@ class SyncService {
     }
 
     await Future.wait([
+      _syncCategories(),
+      _syncProducts(),
       _syncPosTransactions(),
       _syncRefillRecords(),
     ]);
+  }
+
+  Future<void> _syncCategories() async {
+    try {
+      final localCats = await _localDb.getAllCategories();
+      for (final cat in localCats) {
+        if (cat.userId.isNotEmpty) {
+          await _cloudDb.addCategory(cat).catchError((_) {});
+        }
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _syncProducts() async {
+    try {
+      final localProds = await _localDb.getAllProducts();
+      for (final p in localProds) {
+        if (p.userId.isNotEmpty) {
+          await _cloudDb.addProduct(p).catchError((_) {});
+        }
+      }
+    } catch (_) {}
   }
 
   Future<void> _syncPosTransactions() async {

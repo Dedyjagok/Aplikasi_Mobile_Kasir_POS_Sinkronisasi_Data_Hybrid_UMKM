@@ -27,7 +27,7 @@ class _PosMonthlyScreenState extends State<PosMonthlyScreen> {
   }
 
   void _load() {
-    context.read<PosHistoryProvider>().loadMonthTransactions(_month.year, _month.month);
+    context.read<PosHistoryProvider>().loadMonthTransactions(_month.year, _month.month, forceCloud: true);
   }
 
   void _prevMonth() {

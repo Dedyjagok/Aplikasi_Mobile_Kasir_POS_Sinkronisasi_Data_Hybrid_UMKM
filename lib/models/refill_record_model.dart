@@ -53,6 +53,7 @@ class RefillRecord {
 
   // ── Firestore ───────────────────────────────────────────
   Map<String, dynamic> toFirestoreMap() => {
+        'user_id': userId,
         'timestamp': Timestamp.fromDate(timestamp),
         'type': type.value,
         'price': price,

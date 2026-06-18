@@ -51,11 +51,23 @@ class RefillProvider extends ChangeNotifier {
   }
 
   /// Muat record refill bulan tertentu.
-  Future<void> loadMonthRecords(int year, int month) async {
+  Future<void> loadMonthRecords(int year, int month, {bool forceCloud = false}) async {
     _isLoading = true;
     notifyListeners();
     final start = DateTime(year, month);
     final end = DateTime(year, month + 1);
+
+    if (forceCloud) {
+      try {
+        final cloudData = await _cloudDb.getRefillRecordsByMonth(year, month);
+        for (final r in cloudData) {
+          await _localDb.insertRefillRecord(r);
+        }
+      } catch (e) {
+        debugPrint('Error syncing refill records from cloud: $e');
+      }
+    }
+
     _monthRecords = await _localDb.getRefillRecordsByDateRange(start, end);
     _isLoading = false;
     notifyListeners();

@@ -27,12 +27,23 @@ class PosHistoryProvider extends ChangeNotifier {
   List<PosTransaction> get monthTransactions => _monthTransactions;
   bool get isLoading => _isLoading;
 
-  Future<void> loadMonthTransactions(int year, int month) async {
+  Future<void> loadMonthTransactions(int year, int month, {bool forceCloud = false}) async {
     _isLoading = true;
     notifyListeners();
 
     final start = DateTime(year, month);
     final end = DateTime(year, month + 1);
+
+    if (forceCloud) {
+      try {
+        final cloudData = await _cloudDb.getPosTransactionsByMonth(year, month);
+        for (final trx in cloudData) {
+          await _localDb.insertPosTransaction(trx);
+        }
+      } catch (e) {
+        debugPrint('Error syncing POS transactions from cloud: $e');
+      }
+    }
     
     // Tarik data transaksi yang ada di lokal (SQLite)
     _monthTransactions = await _localDb.getPosTransactionsByDateRange(start, end);

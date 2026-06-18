@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import '../models/app_settings_model.dart';
 import '../models/pos_transaction_model.dart';
@@ -12,7 +13,7 @@ class FirestoreService {
 
   // ── Collections ──────────────────────────────────────────
   CollectionReference get _users => _db.collection('users');
-  CollectionReference get _categories => _db.collection('categories');
+  CollectionReference get _categories => _db.collection('product_categories');
   CollectionReference get _products => _db.collection('products');
   CollectionReference get _posTransactions => _db.collection('pos_transactions');
   CollectionReference get _refillRecords => _db.collection('refill_records');
@@ -36,8 +37,12 @@ class FirestoreService {
   // ═══════════════════════════════════════════════════════
 
   Future<List<CategoryModel>> getAllCategories() async {
-    final snapshot = await _categories.orderBy('name').get();
-    return snapshot.docs.map((d) => CategoryModel.fromFirestore(d)).toList();
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return [];
+    final snapshot = await _categories.where('user_id', isEqualTo: user.uid).get();
+    final list = snapshot.docs.map((d) => CategoryModel.fromFirestore(d)).toList();
+    list.sort((a, b) => a.name.compareTo(b.name));
+    return list;
   }
 
   Future<void> addCategory(CategoryModel category) async {
@@ -57,8 +62,12 @@ class FirestoreService {
   // ═══════════════════════════════════════════════════════
 
   Future<List<Product>> getAllProducts() async {
-    final snapshot = await _products.orderBy('name').get();
-    return snapshot.docs.map((d) => Product.fromFirestore(d)).toList();
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return [];
+    final snapshot = await _products.where('user_id', isEqualTo: user.uid).get();
+    final list = snapshot.docs.map((d) => Product.fromFirestore(d)).toList();
+    list.sort((a, b) => a.name.compareTo(b.name));
+    return list;
   }
 
   Future<void> addProduct(Product product) async {
@@ -102,15 +111,18 @@ class FirestoreService {
 
   Future<List<PosTransaction>> getPosTransactionsByMonth(
       int year, int month) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return [];
+
     final start = DateTime(year, month);
     final end = DateTime(year, month + 1);
+    
+    // Fetch all user transactions to bypass composite index requirement
     final snapshot = await _posTransactions
-        .where('timestamp',
-            isGreaterThanOrEqualTo: Timestamp.fromDate(start))
-        .where('timestamp', isLessThan: Timestamp.fromDate(end))
-        .orderBy('timestamp', descending: true)
+        .where('user_id', isEqualTo: user.uid)
         .get();
-    return snapshot.docs.map((doc) {
+        
+    final allTransactions = snapshot.docs.map((doc) {
       final data = doc.data() as Map<String, dynamic>;
       final items = (data['items'] as List<dynamic>? ?? [])
           .map((i) => PosTransactionItem(
@@ -135,6 +147,16 @@ class FirestoreService {
         items: items,
       );
     }).toList();
+
+    // Local filtering by date range
+    final filtered = allTransactions.where((t) {
+      return !t.timestamp.isBefore(start) && t.timestamp.isBefore(end);
+    }).toList();
+
+    // Local sorting (descending)
+    filtered.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+
+    return filtered;
   }
 
   // ═══════════════════════════════════════════════════════
@@ -159,15 +181,28 @@ class FirestoreService {
 
   Future<List<RefillRecord>> getRefillRecordsByMonth(
       int year, int month) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return [];
+
     final start = DateTime(year, month);
     final end = DateTime(year, month + 1);
+    
+    // Fetch all user records to bypass composite index requirement
     final snapshot = await _refillRecords
-        .where('timestamp',
-            isGreaterThanOrEqualTo: Timestamp.fromDate(start))
-        .where('timestamp', isLessThan: Timestamp.fromDate(end))
-        .orderBy('timestamp', descending: true)
+        .where('user_id', isEqualTo: user.uid)
         .get();
-    return snapshot.docs.map(RefillRecord.fromFirestore).toList();
+        
+    final allRecords = snapshot.docs.map(RefillRecord.fromFirestore).toList();
+
+    // Local filtering by date range
+    final filtered = allRecords.where((r) {
+      return !r.timestamp.isBefore(start) && r.timestamp.isBefore(end);
+    }).toList();
+
+    // Local sorting (descending)
+    filtered.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+
+    return filtered;
   }
 
   // ═══════════════════════════════════════════════════════

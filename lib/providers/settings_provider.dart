@@ -22,8 +22,14 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
     try {
       final cloud = await _cloudDb.getSettings();
-      _settings = cloud;
-      await _localDb.saveSettings(cloud); // cache lokal
+      if (cloud != null) {
+        _settings = cloud;
+        await _localDb.saveSettings(cloud); // cache lokal
+      } else {
+        // Jika dokumen cloud belum ada (misal: migrasi user lama), ambil dari lokal lalu sinkronkan ke cloud
+        _settings = await _localDb.getSettings();
+        _cloudDb.saveSettings(_settings).catchError((_) {});
+      }
     } catch (_) {
       // Offline: pakai dari SQLite
       _settings = await _localDb.getSettings();

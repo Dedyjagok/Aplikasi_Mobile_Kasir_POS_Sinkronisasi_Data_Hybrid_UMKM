@@ -1,3 +1,4 @@
+import 'package:aplikasi_kasir_umkm_data_hybrid/providers/settings_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -7,6 +8,7 @@ import 'package:intl/intl.dart';
 import '../../providers/pos_history_provider.dart';
 import '../../providers/product_provider.dart';
 import '../../providers/category_provider.dart';
+import '../../services/export_service.dart';
 
 class ProductStat {
   final String productName;
@@ -42,6 +44,8 @@ class _StatisticScreenState extends State<StatisticScreen> {
       _selectedDate.month,
       forceCloud: true,
     );
+    context.read<CategoryProvider>().loadCategories();
+    context.read<ProductProvider>().loadProducts();
   }
 
   Future<void> _pickDate() async {
@@ -66,17 +70,36 @@ class _StatisticScreenState extends State<StatisticScreen> {
     final products = context.watch<ProductProvider>().products;
     final categories = context.watch<CategoryProvider>().categories;
 
-    // 1. Agregasi penjualan
+    final settings = context.watch<SettingsProvider>().settings;
+    final currency = NumberFormat.currency(
+        locale: 'id_ID', symbol: '${settings.currencySymbol} ', decimalDigits: 0);
+
+    // 1. Agregasi penjualan & Perhitungan Keuangan
     final Map<String, int> salesMap = {};
+    int totalIncome = 0;
+    int totalModal = 0;
+
     for (final trx in posHistory.monthTransactions) {
       // Lewati jika filter harian dan tanggalnya tidak cocok
       if (_filterType == 'Harian' && trx.timestamp.day != _selectedDate.day) {
         continue;
       }
       for (final item in trx.items) {
-        salesMap[item.productId] = (salesMap[item.productId] ?? 0) + item.qty;
+        final product = products.where((p) => p.id == item.productId).firstOrNull;
+        final catId = product?.categoryId ?? '';
+        final category = categories.where((c) => c.id == catId).firstOrNull;
+        final categoryName = category?.name ?? 'Tanpa Kategori';
+
+        if (_selectedCategory == null || _selectedCategory == categoryName) {
+          salesMap[item.productId] = (salesMap[item.productId] ?? 0) + item.qty;
+          totalIncome += item.subtotal;
+          if (product != null) {
+            totalModal += (product.costPrice * item.qty);
+          }
+        }
       }
     }
+    int totalLaba = totalIncome - totalModal;
 
     // 2. Petakan ke ProductStat
     List<ProductStat> allStats = [];
@@ -87,9 +110,7 @@ class _StatisticScreenState extends State<StatisticScreen> {
       final category = categories.where((c) => c.id == catId).firstOrNull;
       final categoryName = category?.name ?? 'Tanpa Kategori';
 
-      if (_selectedCategory == null || _selectedCategory == categoryName) {
-        allStats.add(ProductStat(productName, qty, categoryName));
-      }
+      allStats.add(ProductStat(productName, qty, categoryName));
     });
 
     // 3. Data untuk Chart (Semua barang, sort by Kategori)
@@ -112,7 +133,44 @@ class _StatisticScreenState extends State<StatisticScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
-      appBar: AppBar(title: const Text('Statistik POS')),
+      appBar: AppBar(
+        title: const Text('Statistik POS'),
+        actions: [
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.download),
+            tooltip: 'Export Laporan',
+            onSelected: (value) async {
+              final periodStr = _filterType == 'Bulanan'
+                  ? DateFormat('MMMM yyyy', 'id_ID').format(_selectedDate)
+                  : DateFormat('dd MMM yyyy', 'id_ID').format(_selectedDate);
+
+              if (value == 'pdf') {
+                await ExportService.exportToPdf(
+                  storeName: settings.storeName,
+                  stats: allStats,
+                  totalModal: totalModal,
+                  totalIncome: totalIncome,
+                  totalLaba: totalLaba,
+                  periodName: periodStr,
+                );
+              } else if (value == 'excel') {
+                await ExportService.exportToExcel(
+                  storeName: settings.storeName,
+                  stats: allStats,
+                  totalModal: totalModal,
+                  totalIncome: totalIncome,
+                  totalLaba: totalLaba,
+                  periodName: periodStr,
+                );
+              }
+            },
+            itemBuilder: (_) => [
+              const PopupMenuItem(value: 'pdf', child: Text('Export ke PDF')),
+              const PopupMenuItem(value: 'excel', child: Text('Export ke Excel')),
+            ],
+          ),
+        ],
+      ),
       body: Column(
         children: [
           // Filter Tanggal & Kategori
@@ -240,6 +298,20 @@ class _StatisticScreenState extends State<StatisticScreen> {
                   )
                 : Column(
                     children: [
+                      const SizedBox(height: 16),
+                      // ── RINGKASAN PENJUALAN ──
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                        child: Row(
+                          children: [
+                            Expanded(child: _StatBox('Total Modal', currency.format(totalModal), Colors.orange)),
+                            const SizedBox(width: 8),
+                            Expanded(child: _StatBox('Penjualan', currency.format(totalIncome), Colors.blue)),
+                            const SizedBox(width: 8),
+                            Expanded(child: _StatBox('Laba Bersih', currency.format(totalLaba), Colors.green)),
+                          ],
+                        ),
+                      ),
                       const SizedBox(height: 16),
                       // ── GRAFIK ──
                       Padding(
@@ -463,6 +535,57 @@ class _StatisticScreenState extends State<StatisticScreen> {
                       ),
                     ],
                   ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatBox extends StatelessWidget {
+  final String title;
+  final String value;
+  final Color color;
+
+  const _StatBox(this.title, this.value, this.color);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.3)),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.1),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          )
+        ],
+      ),
+      child: Column(
+        children: [
+          Text(
+            title,
+            style: GoogleFonts.poppins(
+              fontSize: 11,
+              color: Colors.grey.shade600,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 4),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              value,
+              style: GoogleFonts.poppins(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
           ),
         ],
       ),

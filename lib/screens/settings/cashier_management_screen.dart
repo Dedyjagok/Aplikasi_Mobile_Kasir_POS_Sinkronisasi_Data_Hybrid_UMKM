@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/cashier_model.dart';
 import '../../providers/cashier_provider.dart';
+import '../../widgets/tutorial_overlay.dart';
 
 class CashierManagementScreen extends StatefulWidget {
   const CashierManagementScreen({super.key});
@@ -14,12 +16,24 @@ class CashierManagementScreen extends StatefulWidget {
 }
 
 class _CashierManagementScreenState extends State<CashierManagementScreen> {
+  bool _showTutorial = false;
+  final _keyAddFab = GlobalKey();
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<CashierProvider>().loadCashiers();
+      _checkTutorial();
     });
+  }
+
+  Future<void> _checkTutorial() async {
+    final prefs = await SharedPreferences.getInstance();
+    final stage = prefs.getInt('tutorial_owner_stage') ?? 0;
+    if (stage == 2) {
+      if (mounted) setState(() => _showTutorial = true);
+    }
   }
 
   void _showFormDialog({Cashier? cashier}) {
@@ -93,11 +107,24 @@ class _CashierManagementScreenState extends State<CashierManagementScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Manajemen Kasir'),
-      ),
-      body: Consumer<CashierProvider>(
+    final cashiers = context.watch<CashierProvider>().cashiers;
+    final hasCashiers = cashiers.isNotEmpty;
+
+    return PopScope(
+      canPop: hasCashiers,
+      onPopInvoked: (didPop) async {
+        if (didPop) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Harap tambahkan minimal 1 akun kasir terlebih dahulu.')),
+        );
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Manajemen Kasir'),
+        ),
+        body: Stack(
+          children: [
+            Consumer<CashierProvider>(
         builder: (context, provider, child) {
           if (provider.isLoading) {
             return const Center(child: CircularProgressIndicator());
@@ -175,11 +202,39 @@ class _CashierManagementScreenState extends State<CashierManagementScreen> {
           );
         },
       ),
+      if (_showTutorial)
+        Positioned.fill(
+          child: TutorialOverlay(
+            tutorialKey: 'owner_cashier',
+            steps: [
+              TutorialStep(
+                message: 'Silakan tambahkan minimal 1 akun Kasir agar warung Anda bisa segera dioperasikan.',
+                targetKey: _keyAddFab,
+                verticalPosition: 'top',
+                characterPosition: 'right',
+              ),
+            ],
+            onComplete: () async {
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setInt('tutorial_owner_stage', 3);
+              if (mounted) setState(() => _showTutorial = false);
+            },
+            onSkip: () async {
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setInt('tutorial_owner_stage', 5);
+              if (mounted) setState(() => _showTutorial = false);
+            },
+          ),
+        ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
+        key: _keyAddFab,
         onPressed: () => _showFormDialog(),
         backgroundColor: const Color(0xFF00695C),
         child: const Icon(Icons.add),
       ),
-    );
+    ),
+  );
   }
 }

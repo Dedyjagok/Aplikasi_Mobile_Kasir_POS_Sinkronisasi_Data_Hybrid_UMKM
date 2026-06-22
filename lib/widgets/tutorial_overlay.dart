@@ -25,6 +25,9 @@ class TutorialStep {
   /// Apakah tombol "Lanjut" / "Selesai" harus ditampilkan.
   final bool showNextButton;
 
+  /// Callback yang dipanggil saat langkah ini mulai ditampilkan.
+  final Future<void> Function()? onStart;
+
   const TutorialStep({
     required this.message,
     this.targetKey,
@@ -32,6 +35,7 @@ class TutorialStep {
     this.verticalPosition = 'bottom',
     this.isInteractive = false,
     this.showNextButton = true,
+    this.onStart,
   });
 }
 
@@ -164,15 +168,22 @@ class _TutorialOverlayState extends State<TutorialOverlay>
     super.dispose();
   }
 
-  void _startStep() {
+  Future<void> _startStep() async {
     _typeTimer?.cancel();
+    if (!mounted) return;
+    
+    // Tunggu onStart selesai (misal: scroll ke target) agar bounding box valid
+    if (widget.steps[_currentStep].onStart != null) {
+      await widget.steps[_currentStep].onStart!();
+    }
+    
     if (!mounted) return;
     setState(() {
       _displayedText = '';
       _charIndex = 0;
       _isTypingComplete = false;
       _typingSpeed = _normalTypingSpeed;
-      _targetRect = null;
+      _targetRect = _getTargetRect(); // Langsung ambil di sini agar tidak flicker
     });
 
     // Animasikan karakter masuk
@@ -302,7 +313,7 @@ class _TutorialOverlayState extends State<TutorialOverlay>
                     size: Size.infinite,
                     painter: _HighlightPainter(
                       targetRect: targetRect,
-                      overlayOpacity: 0.7,
+                      overlayOpacity: 0.0,
                       pulseValue: _pulseAnimation.value,
                     ),
                   );
@@ -522,9 +533,9 @@ class _HighlightPainter extends CustomPainter {
 
       // Gambar border glow di sekitar highlight
       final glowPaint = Paint()
-        ..color = const Color(0xFF0097A7).withValues(alpha: pulseValue)
+        ..color = Colors.red.withValues(alpha: pulseValue)
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 3;
+        ..strokeWidth = 4;
       canvas.drawRRect(highlightRRect, glowPaint);
     } else {
       canvas.drawRect(fullRect, overlayPaint);

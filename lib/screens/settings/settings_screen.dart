@@ -3,12 +3,15 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../models/app_settings_model.dart';
 import '../../providers/session_provider.dart';
 import '../../providers/settings_provider.dart';
+import '../../widgets/tutorial_overlay.dart';
 import '../products/product_category_screen.dart';
 import 'cashier_management_screen.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -30,6 +33,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late TextEditingController _ownerPinCtrl;
   bool _isSaving = false;
 
+  bool _showTutorial = false;
+  int _tutorialStage = 1;
+  final _scrollCtrl = ScrollController();
+  final _keyBackButton = GlobalKey();
+  final _keyStoreInfo = GlobalKey();
+  final _keyROPrice = GlobalKey();
+
   @override
   void initState() {
     super.initState();
@@ -38,6 +48,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Akses Ditolak')));
       }
+      _checkTutorial();
     });
 
     final s = context.read<SettingsProvider>().settings;
@@ -55,8 +66,51 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _ownerPinCtrl = TextEditingController(text: s.ownerPin);
   }
 
+  Future<void> _checkTutorial() async {
+    final prefs = await SharedPreferences.getInstance();
+    final stage = prefs.getInt('tutorial_owner_stage') ?? 0;
+    if (stage == 1) {
+      if (mounted) setState(() { _showTutorial = true; _tutorialStage = 1; });
+    } else if (stage == 3) {
+      if (mounted) setState(() { _showTutorial = true; _tutorialStage = 3; });
+    }
+  }
+
+  List<TutorialStep> _buildTutorialSteps() {
+    if (_tutorialStage == 3) {
+      return [
+        TutorialStep(
+          message: 'Silakan tekan tombol Kembali untuk menutup halaman pengaturan ini dan kembali ke Dashboard.',
+          targetKey: _keyBackButton,
+          verticalPosition: 'bottom',
+          characterPosition: 'left',
+        ),
+      ];
+    }
+    
+    return [
+      TutorialStep(
+        message: 'Di form ini, Anda bisa mengubah Nama Warung, Alamat, dan Nomor Telepon. Data ini akan otomatis tercetak di bagian atas (header) setiap struk kasir.',
+        verticalPosition: 'bottom',
+        characterPosition: 'left',
+        onStart: () async {
+          await _scrollCtrl.animateTo(0, duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
+        },
+      ),
+      TutorialStep(
+        message: 'Di bagian ini, Anda bisa mengatur Harga Dasar Refill Air RO (baik Antar maupun Ambil Sendiri) yang akan dipakai secara otomatis di Modul Refill.',
+        verticalPosition: 'top',
+        characterPosition: 'right',
+        onStart: () async {
+          await _scrollCtrl.animateTo(150, duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
+        },
+      ),
+    ];
+  }
+
   @override
   void dispose() {
+    _scrollCtrl.dispose();
     for (final c in [
       _storeNameCtrl, _addressCtrl, _phoneCtrl, _footerCtrl,
       _refillAntarCtrl, _refillAmbilCtrl, _thresholdCtrl, _currencyCtrl, _ownerPinCtrl
@@ -172,19 +226,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Pengaturan Toko')),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(20),
-          children: [
+      appBar: AppBar(
+        leading: BackButton(key: _keyBackButton),
+        title: const Text('Pengaturan Toko'),
+      ),
+      body: Stack(
+        children: [
+          Form(
+            key: _formKey,
+            child: ListView(
+              controller: _scrollCtrl,
+              padding: const EdgeInsets.all(20),
+              children: [
             // ══════════════════════════════════════════════
             //  INFORMASI TOKO
             // ══════════════════════════════════════════════
-            _SectionHeader(
-              icon: Icons.store_outlined,
-              title: 'Informasi Toko',
-              subtitle: 'Tampil di header struk pembayaran',
+            Container(
+              key: _keyStoreInfo,
+              child: _SectionHeader(
+                icon: Icons.store_outlined,
+                title: 'Informasi Toko',
+                subtitle: 'Tampil di header struk pembayaran',
+              ),
             ),
             const SizedBox(height: 12),
             _field(
@@ -228,10 +291,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
             // ══════════════════════════════════════════════
             //  HARGA REFILL AIR RO
             // ══════════════════════════════════════════════
-            _SectionHeader(
-              icon: Icons.water_drop_outlined,
-              title: 'Harga Refill Air RO',
-              subtitle: 'Digunakan otomatis di modul refill',
+            Container(
+              key: _keyROPrice,
+              child: _SectionHeader(
+                icon: Icons.water_drop_outlined,
+                title: 'Harga Refill Air RO',
+                subtitle: 'Digunakan otomatis di modul refill',
+              ),
             ),
             const SizedBox(height: 12),
             Row(
@@ -376,8 +442,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
             const SizedBox(height: 40),
-          ],
-        ),
+              ],
+            ),
+          ),
+          if (_showTutorial)
+            Positioned.fill(
+              child: TutorialOverlay(
+                tutorialKey: 'owner_settings',
+                steps: _buildTutorialSteps(),
+                onComplete: () async {
+                  final prefs = await SharedPreferences.getInstance();
+                  if (_tutorialStage == 1) {
+                    await prefs.setInt('tutorial_owner_stage', 2);
+                    if (mounted) {
+                      setState(() => _showTutorial = false);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const CashierManagementScreen()),
+                      ).then((_) => _checkTutorial());
+                    }
+                  } else if (_tutorialStage == 3) {
+                    await prefs.setInt('tutorial_owner_stage', 4);
+                    if (mounted) {
+                      setState(() => _showTutorial = false);
+                      Navigator.pop(context);
+                    }
+                  }
+                },
+                onSkip: () async {
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.setInt('tutorial_owner_stage', 5);
+                  if (mounted) setState(() => _showTutorial = false);
+                },
+              ),
+            ),
+        ],
       ),
     );
   }

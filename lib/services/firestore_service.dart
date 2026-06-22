@@ -17,8 +17,11 @@ class FirestoreService {
   CollectionReference get _products => _db.collection('products');
   CollectionReference get _posTransactions => _db.collection('pos_transactions');
   CollectionReference get _refillRecords => _db.collection('refill_records');
-  DocumentReference get _settings => _db.collection('app_settings').doc('config');
-
+  DocumentReference? get _settings {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return null;
+    return _db.collection('app_settings').doc(user.uid);
+  }
   // ═══════════════════════════════════════════════════════
   //  USER PROFILE
   // ═══════════════════════════════════════════════════════
@@ -209,13 +212,23 @@ class FirestoreService {
   //  PENGATURAN CMS
   // ═══════════════════════════════════════════════════════
 
-  Future<AppSettings> getSettings() async {
-    final doc = await _settings.get();
-    if (!doc.exists) return const AppSettings();
+  Future<AppSettings?> getSettings() async {
+    final ref = _settings;
+    if (ref == null) return null;
+    final doc = await ref.get();
+    if (!doc.exists) return null;
     return AppSettings.fromMap(doc.data() as Map<String, dynamic>);
   }
 
   Future<void> saveSettings(AppSettings settings) async {
-    await _settings.set(settings.toMap(), SetOptions(merge: true));
+    final ref = _settings;
+    if (ref != null) {
+      final user = FirebaseAuth.instance.currentUser;
+      final map = settings.toMap();
+      if (user != null) {
+        map['user_id'] = user.uid;
+      }
+      await ref.set(map, SetOptions(merge: true));
+    }
   }
 }

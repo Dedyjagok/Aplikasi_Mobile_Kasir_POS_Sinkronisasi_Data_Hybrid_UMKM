@@ -8,11 +8,20 @@ classDiagram
     %% BAGIAN 1: MODEL DATA (ENTITAS)
     %% ==========================================
 
+    class Category {
+      +String id
+      +String userId
+      +String name
+      +DateTime updatedAt
+      +toMap() Map
+      +fromMap(Map) Category
+    }
+
     class Product {
       +String id
       +String userId
       +String name
-      +String category
+      +String categoryId
       +int costPrice
       +int sellPrice
       +int stock
@@ -93,6 +102,7 @@ classDiagram
     class DatabaseService {
       <<SQLite Local (Offline)>>
       -Database _db
+      +insertCategory(Category)
       +insertProduct(Product)
       +updateProductStock(String, int)
       +insertPosTransaction(PosTransaction)
@@ -105,6 +115,7 @@ classDiagram
     class FirestoreService {
       <<Firebase Cloud (Online)>>
       -FirebaseFirestore _firestore
+      +addCategory(Category)
       +batchAddPosTransactions(List)
       +batchAddRefillRecords(List)
       %% Data disimpan dalam users/{uid}/...
@@ -125,6 +136,18 @@ classDiagram
       +bool isPremium
       +initialize()
       +checkPremiumStatus()
+    }
+    
+    class NotificationService {
+      <<Local Notifications>>
+      +init()
+      +showLowStockNotification(String, int)
+    }
+    
+    class ExportService {
+      <<File Exporter>>
+      +exportToPdf()
+      +exportToExcel()
     }
 
     %% ==========================================
@@ -154,6 +177,14 @@ classDiagram
       +updateCashier(id, name, pin)
       +deleteCashier(id)
     }
+    
+    class CategoryProvider {
+      +List~Category~ categories
+      +loadCategories()
+      +addCategory(name, userId)
+      +updateCategory(Category)
+      +deleteCategory(id)
+    }
 
     %% ==========================================
     %% RELASI & KARDINALITAS
@@ -161,8 +192,12 @@ classDiagram
 
     %% Komposisi: 1 Transaksi punya banyak Item
     PosTransaction "1" *-- "many" PosTransactionItem : contains
+    
+    %% Relasi: 1 Kategori memiliki banyak Produk
+    Category "1" <-- "many" Product : belongs to
 
     %% Dependensi: DatabaseService mengelola model-model
+    DatabaseService ..> Category : manages
     DatabaseService ..> Product : manages
     DatabaseService ..> PosTransaction : manages
     DatabaseService ..> RefillRecord : manages
@@ -180,4 +215,6 @@ classDiagram
     CashierProvider --> DatabaseService : queries
     CashierProvider ..> Cashier : stores state
     SessionProvider ..> Cashier : utilizes for login
+    CategoryProvider --> DatabaseService : queries
+    CategoryProvider ..> Category : stores state
 ```

@@ -105,7 +105,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Silakan login sebagai Owner untuk mengaktifkan perangkat ini dan menghubungkannya ke sistem Cloud.',
+                      'Silakan login',
                       textAlign: TextAlign.start,
                       style: GoogleFonts.poppins(
                         fontSize: 14,

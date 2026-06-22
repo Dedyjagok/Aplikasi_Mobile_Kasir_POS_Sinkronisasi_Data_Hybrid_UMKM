@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../models/category_model.dart';
 import '../../providers/category_provider.dart';
 import '../../widgets/tutorial_overlay.dart';
 
@@ -147,6 +148,60 @@ class _ProductCategoryScreenState extends State<ProductCategoryScreen> {
     );
   }
 
+  void _editCategory(CategoryModel category) {
+    final editCtrl = TextEditingController(text: category.name);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Edit Kategori'),
+        content: TextField(
+          controller: editCtrl,
+          decoration: const InputDecoration(
+            labelText: 'Nama Kategori',
+            hintText: 'Misal: Snack',
+          ),
+          autofocus: true,
+          textCapitalization: TextCapitalization.words,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final newName = editCtrl.text.trim();
+              if (newName.isNotEmpty && newName != category.name) {
+                final categoryProvider = context.read<CategoryProvider>();
+                
+                final isExist = categoryProvider.categories.any(
+                    (c) => c.name.toLowerCase() == newName.toLowerCase());
+                
+                if (isExist) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Kategori sudah ada!')),
+                  );
+                } else {
+                  final updatedCategory = CategoryModel(
+                    id: category.id,
+                    userId: category.userId,
+                    name: newName,
+                    updatedAt: category.updatedAt,
+                  );
+                  await categoryProvider.updateCategory(updatedCategory);
+                  if (mounted) Navigator.pop(ctx);
+                }
+              } else if (newName == category.name) {
+                if (mounted) Navigator.pop(ctx);
+              }
+            },
+            child: const Text('Simpan'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _deleteCategory(String id) async {
     final categoryProvider = context.read<CategoryProvider>();
     
@@ -200,30 +255,39 @@ class _ProductCategoryScreenState extends State<ProductCategoryScreen> {
                       cat.name,
                       style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
                     ),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.delete_outline, color: Colors.red),
-                      onPressed: () {
-                        showDialog(
-                          context: context,
-                          builder: (ctx) => AlertDialog(
-                            title: const Text('Hapus Kategori?'),
-                            content: Text('Anda yakin ingin menghapus kategori "${cat.name}"?'),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(ctx),
-                                child: const Text('Batal'),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.edit_outlined, color: Colors.blue),
+                          onPressed: () => _editCategory(cat),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline, color: Colors.red),
+                          onPressed: () {
+                            showDialog(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                title: const Text('Hapus Kategori?'),
+                                content: Text('Anda yakin ingin menghapus kategori "${cat.name}"?'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(ctx),
+                                    child: const Text('Batal'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () {
+                                      _deleteCategory(cat.id);
+                                      Navigator.pop(ctx);
+                                    },
+                                    child: const Text('Hapus', style: TextStyle(color: Colors.red)),
+                                  ),
+                                ],
                               ),
-                              TextButton(
-                                onPressed: () {
-                                  _deleteCategory(cat.id);
-                                  Navigator.pop(ctx);
-                                },
-                                child: const Text('Hapus', style: TextStyle(color: Colors.red)),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
+                            );
+                          },
+                        ),
+                      ],
                     ),
                   ),
                 );

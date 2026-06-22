@@ -682,3 +682,20 @@
 
   3. **Perbaikan Transisi ProductListScreen ke HomeScreen (16 Juni 2026)**:
      - Memperbaiki bug di `TutorialOverlay` di mana langkah tanpa tombol "Selesai/Lanjut" (seperti mengklik tombol back) dapat dilompati jika pengguna secara tidak sengaja mengetuk layar (memicu `_onTapScreen` yang salah membaca `showNextButton`). Perbaikan ini memastikan bahwa pada langkah interaktif tanpa tombol lanjut, overlay tutorial akan bertahan hingga pengguna benar-benar berinteraksi dengan tombol target, sehingga status navigasi tutorial (seperti `home_pos_intro`) tersimpan sempurna.
+
+### Fase 20: Tutorial Onboarding Otomatis Owner & Manajemen Kasir (Lintas Layar)
+- **Kebutuhan**: Memperkenalkan metrik utama Dashboard Owner, mengatur profil toko, serta **mewajibkan** Owner membuat setidaknya 1 profil Kasir agar aplikasi bisa dioperasikan. Alur tutorial berjalan mulus lintas 3 layar.
+- **Penyelesaian**:
+  1. **State Machine SharedPreferences (`tutorial_owner_stage`)**:
+     Menggabungkan berbagai *flags* menjadi satu sistem *stage* (0 - 5):
+     - `0`: Tutorial Dashboard Owner awal.
+     - `1`: Tutorial Settings Screen (Form Profil Toko, dsb).
+     - `2`: Tutorial Cashier Management Screen (Wajib mengisi kasir).
+     - `3`: Tutorial Settings Screen (Sorot tombol Back untuk kembali).
+     - `4`: Tutorial Dashboard Owner final (Sorot Menu Titik Tiga -> Kunci Layar).
+     - `5` / `completed`: Tutorial selesai.
+  2. **Auto-Navigation & Pemblokiran Back (`PopScope`)**:
+     - Sistem otomatis berpindah layar dari Dashboard -> Settings -> Cashier menggunakan navigasi otomatis setelah pengguna menyelesaikan *step* di setiap tahapan tutorial.
+     - Menggunakan `PopScope` di halaman Manajemen Kasir untuk memblokir penekanan tombol Back (di Android maupun AppBar) apabila daftar kasir kosong (state = 2). Menjamin Owner selalu memiliki minimal 1 profil Kasir sebelum bisa kembali beroperasi.
+  3. **Sorotan (Highlight) Berkesinambungan**:
+     - Tutorial memberikan panduan dari halaman awal, mengisi pengaturan, mengatur pegawai (kasir), dan memandu *kembali* (sorot tombol kembali di AppBar) sampai instruksi akhir untuk pindah ke *Lock Screen*.

@@ -44,9 +44,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _ownerPinCtrl.text,
     );
 
-    // Jika sukses, main.dart otomatis route ke layar selanjutnya (HomeScreen/LockScreen)
+    // Jika sukses, kita kembalikan ke layar login dan beri pesan
     if (success && mounted) {
-      Navigator.pop(context); // Tutup layar register, biarkan router bekerja
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Pendaftaran berhasil! Silakan login untuk melanjutkan.'),
+          backgroundColor: Color(0xFF00695C),
+          duration: Duration(seconds: 3),
+        ),
+      );
+      Navigator.pop(context); // Tutup layar register, kembali ke login
     }
   }
 
@@ -115,7 +122,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         Text(
-                          'Buat Akun Owner',
+                          'Buat Akun',
                           style: GoogleFonts.poppins(
                             fontSize: 24,
                             fontWeight: FontWeight.w700,

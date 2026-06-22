@@ -13,6 +13,7 @@ import '../../providers/product_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../services/database_service.dart';
 import '../../services/firestore_service.dart';
+import '../../services/notification_service.dart';
 import '../../widgets/cart_item_tile.dart';
 import '../../widgets/tutorial_overlay.dart';
 import 'receipt_screen.dart';
@@ -166,7 +167,13 @@ class _CartScreenState extends State<CartScreen> {
 
     // Kurangi stok setiap produk
     for (final item in cart.itemList) {
+      final oldStock = item.product.stock;
       await productProvider.deductStock(item.product.id, item.qty);
+      final newStock = oldStock - item.qty;
+
+      if (newStock <= item.product.lowStockThreshold && oldStock > item.product.lowStockThreshold) {
+        await NotificationService.showLowStockNotification(item.product.name, newStock);
+      }
     }
 
     final prefs = await SharedPreferences.getInstance();
@@ -273,7 +280,8 @@ class _CartScreenState extends State<CartScreen> {
                           offset: const Offset(0, -4))
                     ],
                   ),
-                  padding: const EdgeInsets.all(24),
+                  padding: EdgeInsets.fromLTRB(
+                      24, 24, 24, 24 + MediaQuery.of(context).padding.bottom),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [

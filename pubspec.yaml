@@ -39,11 +39,17 @@ dependencies:
   permission_handler: ^12.0.3
   fl_chart: ^1.2.0
   shared_preferences: ^2.3.4
+  excel: ^4.0.6
+  pdf: ^3.12.0
+  path_provider: ^2.1.5
+  share_plus: ^12.0.2
+  flutter_local_notifications: ^20.1.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.14.4
 
 flutter:
   uses-material-design: true
@@ -76,3 +82,9 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+flutter_launcher_icons:
+  android: "ic_launcher"
+  ios: true
+  image_path: "assets/images/App_Icon.png"
+  min_sdk_android: 21

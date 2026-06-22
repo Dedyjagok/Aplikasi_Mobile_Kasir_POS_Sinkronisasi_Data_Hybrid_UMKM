@@ -45,9 +45,10 @@ class _RefillEntryScreenState extends State<RefillEntryScreen> {
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // ── Kartu Ringkasan Hari Ini ─────────────────
@@ -262,6 +263,7 @@ class _RefillEntryScreenState extends State<RefillEntryScreen> {
             ),
           ],
         ),
+      ),
       ),
     );
   }

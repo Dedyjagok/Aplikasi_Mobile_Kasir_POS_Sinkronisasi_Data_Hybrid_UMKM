@@ -70,6 +70,9 @@ class AuthProvider extends ChangeNotifier {
         await FirestoreService().saveSettings(updatedSettings);
       }
 
+      // Logout langsung agar user harus login manual (untuk mencegah state bentrok)
+      await _authService.signOut();
+
       _isLoading = false;
       notifyListeners();
       return true;

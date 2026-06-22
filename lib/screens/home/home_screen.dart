@@ -42,7 +42,6 @@ class _HomeScreenState extends State<HomeScreen> {
   final _keyMenuLaporanPOS = GlobalKey();
   final _keyMenuLaporanRefill = GlobalKey();
   final _keyMenuStatistik = GlobalKey();
-  final _keyMenuPengaturan = GlobalKey();
 
   @override
   void initState() {
@@ -99,7 +98,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return [
       const TutorialStep(
-        message: 'Halo!  Saya RO Man, asisten virtual Anda!\n\nSaya akan memandu Anda mengenal fitur-fitur aplikasi kasir ini. Ketuk layar untuk mempercepat teks, atau tekan "Skip Tutorial" untuk melewati.',
+        message: 'Halo!\n\n Disini saya akan memandu Anda mengenal fitur-fitur aplikasi kasir ini. Ketuk layar untuk mempercepat teks, atau tekan "Skip Tutorial" untuk melewati.',
         characterPosition: 'left',
       ),
       TutorialStep(
@@ -393,20 +392,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                     ),
-                    if (session.isOwner) ...[
-                      const SizedBox(width: 12),
-                      _QuickMenu(
-                        key: _keyMenuPengaturan,
-                        icon: Icons.settings_outlined,
-                        label: 'Peng-\naturan',
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const SettingsScreen(),
-                          ),
-                        ),
-                      ),
-                    ],
                   ],
                 ),
               ),

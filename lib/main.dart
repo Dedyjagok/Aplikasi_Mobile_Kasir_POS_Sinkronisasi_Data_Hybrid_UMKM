@@ -17,6 +17,7 @@ import 'providers/settings_provider.dart';
 import 'screens/auth/lock_screen.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/home/home_screen.dart';
+import 'screens/home/home_screen_owner.dart';
 import 'services/database_service.dart';
 import 'services/firestore_service.dart';
 import 'services/notification_service.dart';
@@ -129,7 +130,7 @@ class KasirApp extends StatelessWidget {
           if (auth.isLoggedIn) {
             // Jika ada sesi aktif (PIN valid), masuk Home
             if (session.isActive) {
-              return const HomeScreen();
+              return session.isOwner ? const HomeScreenOwner() : const HomeScreen();
             }
             // Jika tidak ada sesi aktif, tampilkan Layar Kunci (Pilih Profil)
             return const LockScreen();
